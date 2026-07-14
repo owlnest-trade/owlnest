@@ -415,14 +415,14 @@ app.Run();
 static string BuildSqliteConnectionString(WebApplicationBuilder builder)
 {
     var configured = builder.Configuration.GetConnectionString("OwlNest");
-    if (!string.IsNullOrWhiteSpace(configured))
+    if (LooksLikeSqliteConnectionString(configured))
     {
-        return configured;
+        return configured!;
     }
 
     var configuredPath = builder.Configuration["OwlNest:SqlitePath"];
     var dbPath = string.IsNullOrWhiteSpace(configuredPath)
-        ? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "owlnest.db")
+        ? DefaultSqlitePath(builder)
         : Environment.ExpandEnvironmentVariables(configuredPath);
 
     if (!Path.IsPathRooted(dbPath))
@@ -437,6 +437,36 @@ static string BuildSqliteConnectionString(WebApplicationBuilder builder)
     }
 
     return new SqliteConnectionStringBuilder { DataSource = dbPath }.ToString();
+}
+
+static string DefaultSqlitePath(WebApplicationBuilder builder)
+{
+    var home = Environment.GetEnvironmentVariable("HOME");
+    var siteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
+    if (!string.IsNullOrWhiteSpace(home) && !string.IsNullOrWhiteSpace(siteName))
+    {
+        return Path.Combine(home, "data", "owlnest", "owlnest.db");
+    }
+
+    return Path.Combine(builder.Environment.ContentRootPath, "App_Data", "owlnest.db");
+}
+
+static bool LooksLikeSqliteConnectionString(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return false;
+    }
+
+    try
+    {
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        return !string.IsNullOrWhiteSpace(builder.DataSource);
+    }
+    catch (ArgumentException)
+    {
+        return false;
+    }
 }
 
 static async Task ApplySqliteAdditiveSchemaAsync(OwlNestDbContext db, ILogger logger)
