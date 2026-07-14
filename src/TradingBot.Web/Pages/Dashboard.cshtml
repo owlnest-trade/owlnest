@@ -1,0 +1,629 @@
+@page
+@model TradingBot.Web.Pages.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div id="live-banner" style="display:none;background:rgba(248,81,73,0.15);border:1px solid var(--bear);color:var(--bear);padding:10px 16px;border-radius:6px;margin-bottom:14px;font-weight:600;text-align:center">
+    🔥 LIVE MONEY MODE — every order on this account uses real cash. <a asp-page="/Keys" style="color:var(--bear);text-decoration:underline">Switch back to paper</a>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+    <h1 style="margin:0">Your dashboard</h1>
+    <span id="status-pill" class="badge off">…</span>
+    <span id="status-line" class="dim" style="font-size:13px"></span>
+    <span id="syd-time" class="dim" style="font-size:12px;font-family:ui-monospace,'SF Mono',monospace;margin-left:6px"></span>
+    <form method="post" style="margin-left:auto;display:flex;gap:8px">
+        @if (Model.BotRunning)
+        {
+            <button asp-page-handler="Stop" type="submit" class="danger">Stop my bot</button>
+        }
+        else
+        {
+            <button asp-page-handler="Start" type="submit">Start my bot</button>
+        }
+        <a asp-page="/Reports" class="btn muted">Reports</a>
+    </form>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
+
+    <div class="card">
+        <h3>Account</h3>
+        <div id="acct-equity" style="font-size:26px;font-weight:600;margin:6px 0">—</div>
+        <div id="acct-pnl" class="dim" style="font-size:13px">day P&amp;L: —</div>
+        <div class="kv" style="margin-top:10px">
+            <div>Cash</div><div id="acct-cash">—</div>
+            <div>Buying power</div><div id="acct-bp">—</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Risk today</h3>
+        <div class="kv">
+            <div>Min confidence</div><div id="risk-conf">—</div>
+            <div>Max position</div><div id="risk-pos">—</div>
+            <div>Max daily loss</div><div id="risk-dloss">—</div>
+            <div>Stop / Trail</div><div id="risk-exits">—</div>
+            <div>Max hold</div><div id="risk-hold">—</div>
+            <div>Universe size</div><div id="risk-uni">—</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="card">
+    <h3>Positions</h3>
+    <table id="positions-tbl">
+        <thead><tr><th>Ticker</th><th class="num">Qty</th><th class="num">Avg entry</th><th class="num">Market value</th><th class="num">P&amp;L</th><th class="num">P&amp;L %</th><th class="num">Peak</th></tr></thead>
+        <tbody><tr><td colspan="7" class="dim" style="text-align:center;padding:18px 0">No open positions</td></tr></tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h3>Orders</h3>
+    <div id="orders-summary" class="dim" style="font-size:12px;margin-bottom:8px">—</div>
+    <table id="orders-tbl">
+        <thead><tr><th>Time</th><th>Side</th><th>Ticker</th><th class="num">Qty</th><th class="num">Submit $</th><th class="num">Slippage</th><th class="num">Fill latency</th><th>Status</th><th>Reason</th></tr></thead>
+        <tbody><tr><td colspan="9" class="dim" style="text-align:center;padding:18px 0">No orders yet</td></tr></tbody>
+    </table>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px">
+
+    <div class="card">
+        <h3>Dynamic watchlist <span class="dim" style="font-size:12px;font-weight:normal">(auto-discovered)</span></h3>
+        <div id="watchlist-summary" class="dim" style="font-size:12px;margin-bottom:8px">—</div>
+        <table id="watchlist-tbl">
+            <thead><tr><th>Ticker</th><th class="num">Buzz</th><th>Why / when</th></tr></thead>
+            <tbody><tr><td colspan="3" class="dim" style="text-align:center;padding:14px">Enable Discovery / Grok in Settings.</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Macro context <span class="dim" style="font-size:12px;font-weight:normal">(Manifold odds)</span></h3>
+        <div id="macro-summary" class="dim" style="font-size:12px;margin-bottom:8px">Set MacroSource = Manifold in Settings.</div>
+        <table id="macro-tbl">
+            <thead><tr><th>Question</th><th class="num">YES</th></tr></thead>
+            <tbody><tr><td colspan="2" class="dim" style="text-align:center;padding:14px">—</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Grok trending <span class="dim" style="font-size:12px;font-weight:normal">(X + web search)</span></h3>
+        <div id="trending-summary" class="dim" style="font-size:12px;margin-bottom:8px">Add a Grok key on /Keys and enable in Settings.</div>
+        <table id="trending-tbl">
+            <thead><tr><th>Ticker</th><th>Sent.</th><th>Reason</th></tr></thead>
+            <tbody><tr><td colspan="3" class="dim" style="text-align:center;padding:14px">—</td></tr></tbody>
+        </table>
+    </div>
+
+</div>
+
+<div class="card">
+    <h3>Recent decisions <span class="dim" style="font-size:12px;font-weight:normal;margin-left:8px">price = market when decision was recorded · latency = article publish → bot reaction</span></h3>
+    <table id="decisions-tbl">
+        <thead><tr><th>Time</th><th>Ticker</th><th class="num">Price</th><th class="num">Latency</th><th>Source</th><th>Sentiment</th><th class="num">Conf</th><th>Outcome</th><th>Why</th></tr></thead>
+        <tbody><tr><td colspan="9" class="dim" style="text-align:center;padding:18px 0">No decisions yet. Start your bot and wait for news.</td></tr></tbody>
+    </table>
+</div>
+
+@*
+   Watchlist promotion log — every time a ticker was newly added to the dynamic watchlist by buzz
+   discovery or Grok trending. Shows the price at promotion. Compare against subsequent decisions
+   for the same ticker to see "did the price move after we noticed it?".
+*@
+<div class="card">
+    <h3>📈 Watchlist promotions <span class="dim" style="font-size:12px;font-weight:normal;margin-left:8px">when discovery/Grok first flagged a ticker, with price at that moment</span></h3>
+    <div id="watchlist-events-summary" class="dim" style="font-size:12px;margin-bottom:8px">—</div>
+    <table id="watchlist-events-tbl">
+        <thead><tr><th>Time</th><th>Ticker</th><th>Source</th><th class="num">Buzz</th><th class="num">Price at promo</th><th>Reason</th></tr></thead>
+        <tbody><tr><td colspan="6" class="dim" style="text-align:center;padding:18px 0">No promotions yet. Requires Discovery or Grok trending enabled.</td></tr></tbody>
+    </table>
+</div>
+
+@*
+   Verification gate audit log — every Grok / Claude / Llama-fallback call with the prompt
+   we sent and the raw model response. Filter buttons up top, compact summary rows, click a
+   row to expand to a side-by-side prompt | response inspector.
+*@
+<div class="card">
+    <div class="gate-header">
+        <h3 style="margin:0">🛡️ Verification gate calls</h3>
+        <div class="gate-filters" id="gate-filters">
+            <button type="button" class="gate-filter active" data-filter="all">All</button>
+            <button type="button" class="gate-filter" data-filter="Grok">Grok</button>
+            <button type="button" class="gate-filter" data-filter="Claude">Claude</button>
+            <button type="button" class="gate-filter" data-filter="LlamaFallback">Llama</button>
+            <button type="button" class="gate-filter" data-filter="vetos">Vetos</button>
+            <button type="button" class="gate-filter" data-filter="errors">Errors</button>
+        </div>
+    </div>
+    <div id="gate-calls-summary" class="dim" style="font-size:12px;margin:8px 0 12px">—</div>
+    <div id="gate-calls-list" class="gate-list">
+        <div class="gate-empty">No gate calls yet. Gates only run on candidates that survive earlier filters.</div>
+    </div>
+</div>
+
+<style>
+    /* Header row: title + filter pills aligned right. Stacks on mobile. */
+    .gate-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .gate-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+    .gate-filter {
+        background: transparent; color: var(--muted); border: 1px solid var(--border);
+        border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+        cursor: pointer; transition: all .15s ease;
+    }
+    .gate-filter:hover { color: var(--text); border-color: var(--muted); }
+    .gate-filter.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Each call is a card with a flex header line + a separate reason line below.
+       Designed to NEVER overflow or wrap awkwardly regardless of viewport width. */
+    .gate-list { display: flex; flex-direction: column; gap: 4px; }
+    .gate-empty { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+
+    .gate-row {
+        padding: 8px 12px; border-radius: 6px;
+        cursor: pointer; transition: background .12s ease;
+        border: 1px solid transparent;
+    }
+    .gate-row:hover { background: rgba(88,166,255,0.05); border-color: var(--border); }
+    .gate-row.open  { background: rgba(88,166,255,0.08); border-color: var(--border); }
+
+    .gate-row-head {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .gate-row .chev {
+        color: var(--muted); font-size: 10px; transition: transform .15s ease;
+        flex: 0 0 auto;
+    }
+    .gate-row.open .chev { transform: rotate(90deg); }
+    .gate-row .time {
+        color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums;
+        flex: 0 0 auto;
+    }
+    .gate-row .gate-name {
+        font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+        flex: 0 0 auto;
+    }
+    .gate-row .gate-name.grok          { color: #f7931a; }   /* xAI orange */
+    .gate-row .gate-name.claude        { color: #c084fc; }   /* Anthropic purple */
+    .gate-row .gate-name.llamafallback { color: var(--bull); }
+    .gate-row .ticker {
+        font-weight: 700; color: var(--accent); font-size: 13px;
+        flex: 0 0 auto;
+    }
+    .gate-row .verdict {
+        display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+        flex: 0 0 auto;
+    }
+    .gate-row .verdict.approve { background: rgba(63,185,80,0.15); color: var(--bull); }
+    .gate-row .verdict.veto    { background: rgba(248,81,73,0.15); color: var(--bear); }
+    .gate-row .verdict.caution { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .gate-row .verdict.error,
+    .gate-row .verdict.bearish, .gate-row .verdict.neutral, .gate-row .verdict.bullish,
+    .gate-row .verdict.parse-failed { background: rgba(139,148,158,0.15); color: var(--muted); }
+    .gate-row .latency {
+        color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums;
+        margin-left: auto; flex: 0 0 auto;
+    }
+    .gate-row .reason {
+        color: var(--muted); font-size: 12px; line-height: 1.5;
+        margin: 4px 0 0 22px;   /* indent under the chevron */
+        overflow: hidden; text-overflow: ellipsis;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+
+    /* Expanded detail panel — shown when sibling .gate-row has .open */
+    .gate-detail { display: none; padding: 14px 18px; background: rgba(13,17,23,0.65);
+                   border: 1px solid var(--border); border-radius: 8px; margin: -2px 0 6px; }
+    .gate-detail.open { display: block; }
+    .gate-detail .gd-headline {
+        font-size: 14px; color: var(--text); font-style: italic;
+        border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin-bottom: 8px;
+    }
+    .gate-detail .gd-meta { color: var(--muted); font-size: 11px; margin-bottom: 14px; }
+    .gate-detail .gd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .gate-detail .gd-col-label {
+        color: var(--muted); font-size: 10px; text-transform: uppercase;
+        letter-spacing: 0.7px; font-weight: 700; margin-bottom: 4px;
+    }
+    .gate-detail pre {
+        margin: 0; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border);
+        border-radius: 6px; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+        font-size: 11.5px; line-height: 1.5; color: var(--text);
+        max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+    }
+
+    @@media (max-width: 720px) {
+        .gate-detail .gd-cols { grid-template-columns: 1fr; }
+        .gate-row .reason { margin-left: 0; }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        const fmtMoney = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtPct = n => n == null ? '—' : (Number(n) * 100).toFixed(2) + '%';
+        const fmtPct0 = n => n == null ? '—' : (Number(n) * 100).toFixed(0) + '%';
+        // Display all times in Sydney (AEST/AEDT). Backend stores UTC; we convert client-side.
+        const SYDNEY_TZ = 'Australia/Sydney';
+        const fmtTime = iso => { if (!iso) return '—'; return new Date(iso).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: SYDNEY_TZ }); };
+        const fmtDateTime = iso => { if (!iso) return '—'; return new Date(iso).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: SYDNEY_TZ }); };
+        const $ = id => document.getElementById(id);
+        const esc = s => (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+        async function get(url) { try { const r = await fetch(url); if (!r.ok) return null; return await r.json(); } catch { return null; } }
+
+        async function refreshStatus() {
+            const s = await get('/api/me/status');
+            if (!s) return;
+            $('live-banner').style.display = s.liveMode ? 'block' : 'none';
+            $('status-pill').textContent = s.running ? 'Running' : 'Stopped';
+            $('status-pill').className = 'badge ' + (s.running ? 'on' : 'off');
+            $('status-line').textContent = s.statusLine || '';
+            $('risk-conf').textContent = fmtPct0(s.minConfidence);
+            $('risk-pos').textContent = fmtPct(s.maxPositionFraction);
+            $('risk-dloss').textContent = fmtPct(s.maxDailyLossFraction);
+            $('risk-exits').textContent =
+                (s.stopLossType + (s.stopLossPercent > 0 ? ' ' + fmtPct(s.stopLossPercent) : '')) +
+                (s.trailingStopPercent > 0 ? ' / trail ' + fmtPct(s.trailingStopPercent) + ' (arm ' + fmtPct(s.trailingStopActivationPercent) + ')' : '');
+            $('risk-hold').textContent = s.maxHoldDays + 'd';
+            $('risk-uni').textContent = (s.universe || []).length + ' tickers';
+        }
+
+        async function refreshAccount() {
+            // The most recent equity snapshot doubles as the account view (we write one on bot start and hourly).
+            const eq = await get('/api/me/equity?hours=1');
+            if (!eq || eq.length === 0) {
+                $('acct-equity').textContent = '—';
+                $('acct-pnl').textContent = 'day P&L: —';
+                $('acct-cash').textContent = '—';
+                $('acct-bp').textContent = '—';
+                return;
+            }
+            const latest = eq[eq.length - 1];
+            const sessionStart = eq[0]; // best-effort — first snapshot of the page window
+            $('acct-equity').textContent = fmtMoney(latest.equity);
+            $('acct-cash').textContent = fmtMoney(latest.cash);
+            $('acct-bp').textContent = fmtMoney(latest.buyingPower);
+            const dp = latest.equity - sessionStart.equity;
+            const dpPct = sessionStart.equity > 0 ? (dp / sessionStart.equity) : 0;
+            const sign = dp > 0 ? '+' : '';
+            const cls = dp > 0 ? 'num-pos' : (dp < 0 ? 'num-neg' : '');
+            $('acct-pnl').innerHTML = 'day P&L: <span class="' + cls + '">' + sign + fmtMoney(dp) + ' (' + sign + fmtPct(dpPct) + ')</span>';
+        }
+
+        async function refreshPositions() {
+            const p = await get('/api/me/positions') || [];
+            const tbody = $('positions-tbl').querySelector('tbody');
+            if (p.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="dim" style="text-align:center;padding:18px 0">No open positions</td></tr>';
+                return;
+            }
+            tbody.innerHTML = p.map(x => {
+                const pnl = x.unrealizedPnL;
+                const pnlPct = x.averageEntryPrice > 0 && x.quantity > 0 ? ((x.marketValue / x.quantity) - x.averageEntryPrice) / x.averageEntryPrice : 0;
+                const cls = pnl > 0 ? 'num-pos' : (pnl < 0 ? 'num-neg' : '');
+                const sign = pnl > 0 ? '+' : '';
+                const pkPctOfEntry = x.peakPrice > 0 && x.averageEntryPrice > 0 ? ((x.peakPrice - x.averageEntryPrice) / x.averageEntryPrice) : 0;
+                return `<tr>
+                    <td><strong>${esc(x.ticker)}</strong></td>
+                    <td class="num">${x.quantity}</td>
+                    <td class="num">${fmtMoney(x.averageEntryPrice)}</td>
+                    <td class="num">${fmtMoney(x.marketValue)}</td>
+                    <td class="num ${cls}">${sign}${fmtMoney(pnl)}</td>
+                    <td class="num ${cls}">${sign}${fmtPct(pnlPct)}</td>
+                    <td class="num dim" title="highest price since open">${fmtMoney(x.peakPrice)} (+${fmtPct(pkPctOfEntry)})</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function refreshOrders() {
+            const o = await get('/api/me/orders?limit=50') || [];
+            const tbody = $('orders-tbl').querySelector('tbody');
+            const summary = $('orders-summary');
+            if (o.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="dim" style="text-align:center;padding:18px 0">No orders yet</td></tr>';
+                summary.textContent = '';
+                return;
+            }
+            const counts = { filled: 0, pending: 0, rejected: 0, canceled: 0 };
+            for (const x of o) {
+                const s = (x.status || '').toLowerCase();
+                if (s === 'filled' || s === 'partially_filled') counts.filled++;
+                else if (s === 'rejected' || s === 'suspended') counts.rejected++;
+                else if (s === 'canceled' || s === 'cancelled' || s === 'expired' || s === 'replaced') counts.canceled++;
+                else counts.pending++;
+            }
+            summary.innerHTML =
+                (counts.filled  ? `<span class="badge on">${counts.filled} filled</span> ` : '') +
+                (counts.pending ? `<span class="badge warn">${counts.pending} pending</span> ` : '') +
+                (counts.canceled? `<span class="badge off">${counts.canceled} canceled</span> ` : '');
+            tbody.innerHTML = o.slice(0, 25).map(x => {
+                const sideCls = x.side === 'Buy' ? 'num-pos' : 'num-neg';
+                const status = (x.status || '').toLowerCase();
+                const statusCls = status === 'filled' ? 'on' : (status === 'rejected' ? 'off' : 'warn');
+                // Slippage: filled price vs the price we used when sizing. Positive = paid more
+                // than we expected (bad on buys, good on sells); negative = we got a better price.
+                let slipCell = '<td class="num dim">—</td>';
+                if (x.priceAtSubmitUsd != null && x.filledAvgPrice != null && x.filledAvgPrice > 0) {
+                    const slip = x.filledAvgPrice - x.priceAtSubmitUsd;
+                    const slipPct = x.priceAtSubmitUsd > 0 ? (slip / x.priceAtSubmitUsd) : 0;
+                    // For a buy a positive slip is bad; for a sell it's good. Flip the color for sells.
+                    const isBad = x.side === 'Buy' ? slip > 0 : slip < 0;
+                    const cls = slip === 0 ? 'dim' : (isBad ? 'num-neg' : 'num-pos');
+                    const sign = slip > 0 ? '+' : '';
+                    slipCell = `<td class="num ${cls}" title="filled ${fmtMoney(x.filledAvgPrice)} vs submit ${fmtMoney(x.priceAtSubmitUsd)}">${sign}${fmtPct(slipPct)}</td>`;
+                }
+                // Fill latency: how long the broker took between submit and fill (ms).
+                let fillLatCell = '<td class="num dim">—</td>';
+                if (x.submittedAtUtc && x.filledAtUtc) {
+                    const ms = new Date(x.filledAtUtc).getTime() - new Date(x.submittedAtUtc).getTime();
+                    fillLatCell = `<td class="num dim">${ms}ms</td>`;
+                }
+                return `<tr>
+                    <td class="dim">${fmtTime(x.submittedAtUtc)}</td>
+                    <td><strong class="${sideCls}">${esc(x.side)}</strong></td>
+                    <td><strong>${esc(x.ticker)}</strong></td>
+                    <td class="num">${x.quantity}</td>
+                    <td class="num dim">${fmtMoney(x.priceAtSubmitUsd)}</td>
+                    ${slipCell}
+                    ${fillLatCell}
+                    <td><span class="badge ${statusCls}">${status}</span></td>
+                    <td class="dim">${esc(x.reason)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function refreshDecisions() {
+            const d = await get('/api/me/decisions?limit=50') || [];
+            const tbody = $('decisions-tbl').querySelector('tbody');
+            if (d.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="dim" style="text-align:center;padding:18px 0">No decisions yet. Start your bot and wait for news.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = d.slice(0, 25).map(x => {
+                const sBadge = x.sentiment === 'bullish' ? 'on' : (x.sentiment === 'bearish' ? 'off' : 'warn');
+                const oBadge = x.outcome === 'Submitted' ? 'on' : (x.outcome === 'Rejected' ? 'off' : 'warn');
+                // Reaction latency = decision time - article published time. "How long after the
+                // article was published did the bot react?" Shown in seconds for readability.
+                let latCell = '<td class="num dim">—</td>';
+                if (x.atUtc && x.publishedAtUtc) {
+                    const sec = Math.round((new Date(x.atUtc).getTime() - new Date(x.publishedAtUtc).getTime()) / 1000);
+                    if (sec >= 0 && sec < 86400) {
+                        const display = sec < 60 ? `${sec}s` : sec < 3600 ? `${Math.round(sec/60)}m` : `${Math.round(sec/3600)}h`;
+                        latCell = `<td class="num dim" title="article published → bot reacted">${display}</td>`;
+                    }
+                }
+                return `<tr>
+                    <td class="dim">${fmtTime(x.atUtc)}</td>
+                    <td><strong>${esc(x.ticker)}</strong></td>
+                    <td class="num dim">${fmtMoney(x.priceUsd)}</td>
+                    ${latCell}
+                    <td class="dim">${esc(x.source)}</td>
+                    <td><span class="badge ${sBadge}">${esc(x.sentiment || '—')}</span></td>
+                    <td class="num">${x.confidence == null ? '—' : fmtPct0(x.confidence)}</td>
+                    <td><span class="badge ${oBadge}">${esc(x.outcome)}</span></td>
+                    <td class="dim" title="${esc(x.outcomeReason)}">${esc((x.outcomeReason || '').substring(0, 80))}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function refreshWatchlistEvents() {
+            const e = await get('/api/me/watchlist-events?limit=25') || [];
+            const tbody = $('watchlist-events-tbl').querySelector('tbody');
+            const summary = $('watchlist-events-summary');
+            if (e.length === 0) {
+                summary.textContent = 'No promotions yet. Requires Discovery or Grok trending enabled in Settings.';
+                tbody.innerHTML = '<tr><td colspan="6" class="dim" style="text-align:center;padding:18px 0">—</td></tr>';
+                return;
+            }
+            const buzzCount = e.filter(x => x.source === 'Buzz').length;
+            const grokCount = e.filter(x => x.source === 'Grok').length;
+            summary.textContent = `${e.length} promotions (${buzzCount} Buzz, ${grokCount} Grok)`;
+            tbody.innerHTML = e.map(x => {
+                const srcCls = x.source === 'Grok' ? 'on' : 'warn';
+                return `<tr>
+                    <td class="dim">${fmtDateTime(x.atUtc)}</td>
+                    <td><strong>${esc(x.ticker)}</strong></td>
+                    <td><span class="badge ${srcCls}">${esc(x.source)}</span></td>
+                    <td class="num">${x.buzzScore}</td>
+                    <td class="num dim">${fmtMoney(x.priceUsd)}</td>
+                    <td class="dim" title="${esc(x.reason || '')}">${esc((x.reason || '').substring(0, 80))}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Filter state for the gate-calls tile. "all" shows everything; gate-name filters by Gate;
+        // "vetos" / "errors" filter by Verdict regardless of gate.
+        let gateFilter = 'all';
+        // Cache the latest gate calls between ticks so filter clicks re-render instantly without
+        // waiting for the next 3s API poll.
+        let gateCallsCache = [];
+
+        function fmtLatency(ms) {
+            if (ms == null) return '—';
+            if (ms < 1000) return ms + 'ms';
+            return (ms / 1000).toFixed(1) + 's';
+        }
+
+        function renderGateCalls() {
+            const all = gateCallsCache;
+            const container = $('gate-calls-list');
+            const summary = $('gate-calls-summary');
+
+            if (all.length === 0) {
+                summary.textContent = 'No gate calls yet. Verification gates only run on candidates that survive earlier filters.';
+                container.innerHTML = '<div class="gate-empty">—</div>';
+                return;
+            }
+
+            // Header summary always reflects ALL calls, not filtered subset — gives a stable
+            // "what's been happening" pulse independent of which tab you're viewing.
+            const grokCount   = all.filter(x => x.gate === 'Grok').length;
+            const claudeCount = all.filter(x => x.gate === 'Claude').length;
+            const fbCount     = all.filter(x => x.gate === 'LlamaFallback').length;
+            const approves    = all.filter(x => x.verdict === 'Approve').length;
+            const vetoes      = all.filter(x => x.verdict === 'Veto').length;
+            const cautions    = all.filter(x => x.verdict === 'Caution').length;
+            const avgLatency  = Math.round(all.reduce((s, x) => s + (x.latencyMs || 0), 0) / all.length);
+            summary.innerHTML =
+                `${all.length} calls · ` +
+                (grokCount   ? `<span style="color:#f7931a">${grokCount} Grok</span> · ` : '') +
+                (claudeCount ? `<span style="color:#c084fc">${claudeCount} Claude</span> · ` : '') +
+                (fbCount     ? `<span class="num-pos">${fbCount} Llama-fallback</span> · ` : '') +
+                `<span class="num-pos">${approves} approve</span> · ` +
+                `<span class="num-neg">${vetoes} veto</span> · ` +
+                `${cautions} caution · avg ${fmtLatency(avgLatency)}`;
+
+            // Apply current filter.
+            const filtered = all.filter(x => {
+                if (gateFilter === 'all')    return true;
+                if (gateFilter === 'vetos')  return x.verdict === 'Veto';
+                if (gateFilter === 'errors') return x.verdict === 'Error' || x.verdict === 'parse-failed';
+                return x.gate === gateFilter;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="gate-empty">No calls match "${gateFilter}"</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(x => {
+                const verdictCls = (x.verdict || 'error').toLowerCase();
+                const gateCls    = (x.gate    || '').toLowerCase();
+                // Header line: chevron / time / gate / ticker / verdict / latency (pushed right by margin-left:auto)
+                // Reason on its own line below so it can wrap freely and never squeezes the header items.
+                return `<div>
+                    <div class="gate-row" data-id="${x.id}">
+                        <div class="gate-row-head">
+                            <span class="chev">▶</span>
+                            <span class="time">${fmtTime(x.atUtc)}</span>
+                            <span class="gate-name ${gateCls}">${esc(x.gate)}</span>
+                            <span class="ticker">${esc(x.ticker)}</span>
+                            <span class="verdict ${verdictCls}">${esc(x.verdict)}</span>
+                            <span class="latency">${fmtLatency(x.latencyMs)}</span>
+                        </div>
+                        ${x.reason ? `<div class="reason" title="${esc(x.reason)}">${esc(x.reason)}</div>` : ''}
+                    </div>
+                    <div class="gate-detail" id="gate-detail-${x.id}">
+                        <div class="gd-headline">"${esc(x.headline)}"</div>
+                        <div class="gd-meta">
+                            ${esc(x.source)} · model <strong>${esc(x.modelName)}</strong> ·
+                            ${fmtDateTime(x.atUtc)} · ${fmtLatency(x.latencyMs)}
+                        </div>
+                        <div class="gd-cols">
+                            <div>
+                                <div class="gd-col-label">Prompt</div>
+                                <pre>${esc(x.prompt)}</pre>
+                            </div>
+                            <div>
+                                <div class="gd-col-label">Raw response</div>
+                                <pre>${esc(x.rawResponse)}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Wire click-to-expand. The chevron and surrounding row are the click target;
+            // both .gate-row and .gate-detail get the .open class toggled together.
+            container.querySelectorAll('.gate-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const id = row.dataset.id;
+                    row.classList.toggle('open');
+                    $('gate-detail-' + id).classList.toggle('open');
+                });
+            });
+        }
+
+        async function refreshGateCalls() {
+            const g = await get('/api/me/gate-calls?limit=50') || [];
+            gateCallsCache = g;
+            renderGateCalls();
+        }
+
+        // Wire filter buttons once at startup. Re-renders from cache on click.
+        document.querySelectorAll('#gate-filters .gate-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#gate-filters .gate-filter').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                gateFilter = btn.dataset.filter;
+                renderGateCalls();
+            });
+        });
+
+        async function refreshWatchlist() {
+            const w = await get('/api/me/watchlist') || [];
+            const tbody = $('watchlist-tbl').querySelector('tbody');
+            $('watchlist-summary').textContent = w.length === 0 ? 'None yet — bot needs to be running with Discovery or Grok enabled.' : `${w.length} ticker(s) on dynamic watchlist`;
+            if (w.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="dim" style="text-align:center;padding:14px">Enable Discovery / Grok in Settings.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = w.map(e => {
+                const promotedAgo = e.promotedAt ? Math.round((Date.now() - new Date(e.promotedAt).getTime()) / 60000) : '?';
+                return `<tr>
+                    <td><strong>${esc(e.ticker)}</strong></td>
+                    <td class="num">${e.buzz}</td>
+                    <td class="dim" title="${esc(e.reason || '')}">${esc((e.reason || '').substring(0, 60))} <span style="opacity:0.6">· ${promotedAgo}m ago</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function refreshMacro() {
+            const m = await get('/api/me/macro');
+            const tbody = $('macro-tbl').querySelector('tbody');
+            if (!m || !m.markets || m.markets.length === 0) {
+                $('macro-summary').textContent = 'No macro data yet (Manifold polls every 10 min after app start).';
+                tbody.innerHTML = '<tr><td colspan="2" class="dim" style="text-align:center;padding:14px">—</td></tr>';
+                return;
+            }
+            const at = m.atUtc ? new Date(m.atUtc).toLocaleTimeString() : '—';
+            $('macro-summary').textContent = `Last refresh ${at} · ${m.markets.length} markets`;
+            tbody.innerHTML = m.markets.slice(0, 10).map(x => {
+                const pct = (Number(x.yesPrice) * 100).toFixed(0);
+                const cls = x.yesPrice >= 0.5 ? 'num-pos' : 'num-neg';
+                return `<tr>
+                    <td><a href="${esc(x.url)}" target="_blank" rel="noopener" class="dim" style="text-decoration:none">${esc(x.question)}</a></td>
+                    <td class="num ${cls}">${pct}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function refreshTrending() {
+            const t = await get('/api/me/trending') || [];
+            const tbody = $('trending-tbl').querySelector('tbody');
+            if (t.length === 0) {
+                $('trending-summary').textContent = 'No Grok trending data yet. Needs a Grok key + UseGrokTrending = true.';
+                tbody.innerHTML = '<tr><td colspan="3" class="dim" style="text-align:center;padding:14px">—</td></tr>';
+                return;
+            }
+            $('trending-summary').textContent = `${t.length} ticker(s) from last Grok poll`;
+            tbody.innerHTML = t.map(x => {
+                const sBadge = x.sentiment === 'bullish' ? 'on' : (x.sentiment === 'bearish' ? 'off' : 'warn');
+                return `<tr>
+                    <td><strong>${esc(x.ticker)}</strong></td>
+                    <td><span class="badge ${sBadge}">${esc(x.sentiment)}</span></td>
+                    <td class="dim" title="${esc(x.reason)}">${esc((x.reason || '').substring(0, 70))}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function refreshSydTime() {
+            const now = new Date();
+            const t = now.toLocaleString('en-AU', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: SYDNEY_TZ });
+            $('syd-time').textContent = t + ' Sydney';
+        }
+
+        async function tick() {
+            refreshSydTime();
+            await Promise.all([refreshStatus(), refreshAccount(), refreshPositions(), refreshOrders(), refreshDecisions(),
+                               refreshWatchlistEvents(), refreshGateCalls(), refreshWatchlist(), refreshMacro(), refreshTrending()]);
+        }
+        tick();
+        setInterval(tick, 3000);
+    </script>
+}

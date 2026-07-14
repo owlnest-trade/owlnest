@@ -1,0 +1,475 @@
+@page
+@model TradingBot.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "owlnest.trade · open-source news trading bot";
+    ViewData["MainClass"] = "landing";
+}
+
+@* ════════════════════════════════════════════════════════════════════════
+   HERO
+   ════════════════════════════════════════════════════════════════════════ *@
+<section class="hero-grand">
+    <div class="owl">🦉</div>
+    <h1>
+        <span class="hero-line">Open-source news trading.</span>
+        <span class="hero-line">Built to be inspected.</span>
+    </h1>
+    <p class="tagline">
+        Owlnest is an open-source trading bot that watches financial news, scores catalysts with AI,
+        records every decision, and routes paper trades through your own Alpaca account.
+    </p>
+    <p class="subtag">
+        Run it yourself, read the code, tune the rules, and replay decisions before trusting a strategy.
+        Managed instances are available for people who want the bot hosted and maintained for them.
+    </p>
+    <div class="cta-row">
+        <a href="https://github.com/owlnest-trade/owlnest" target="_blank" rel="noopener" class="btn">View on GitHub</a>
+        <a asp-page="/Contact" class="ghost">Managed instance</a>
+        <a asp-page="/Account/Login" class="ghost">Log in</a>
+    </div>
+    <p class="subtag" style="margin-top:12px;font-size:13px"><strong>Open-source core, managed on request.</strong> Public signup and demo access are closed; contact us if you want a managed instance.</p>
+
+    @* Rotating product preview — 3 slides auto-cycle, showing different views of the dashboard *@
+    <div class="hero-carousel" aria-label="Product preview">
+        @* Slide 1: a single decision card *@
+        <div class="slide">
+            <div class="hero-preview">
+                <div class="ts">Mon 08 Jun, 00:23:07 Sydney · NVDA</div>
+                <div class="headline">"NVIDIA reports Q1 record data-center revenue of $30.1B, beating estimates by 12%"</div>
+                <div class="verdict-row">
+                    <div class="kv-cell bull"><div class="l">Sentiment</div><div class="v">Bullish</div></div>
+                    <div class="kv-cell"><div class="l">Confidence</div><div class="v">88%</div></div>
+                    <div class="kv-cell passed"><div class="l">All gates</div><div class="v">Passed</div></div>
+                    <div class="kv-cell"><div class="l">Source</div><div class="v">Reuters</div></div>
+                </div>
+                <div class="action">
+                    <span class="pulse"></span>
+                    <span>Submitting</span>
+                    <span class="qty">BUY 14 NVDA</span>
+                    <span>at market →</span>
+                    <span class="total">$2,512 paper</span>
+                </div>
+            </div>
+        </div>
+
+        @* Slide 2: dashboard stats tiles *@
+        <div class="slide">
+            <div class="hero-preview">
+                <div class="ts">Your dashboard, updated every 3 seconds</div>
+                <div class="dash-tiles">
+                    <div class="dash-tile">
+                        <div class="dash-l">Account equity</div>
+                        <div class="dash-big">$104,521.78</div>
+                        <div class="dash-sm pos">+$1,238.42 today (+1.20%)</div>
+                    </div>
+                    <div class="dash-tile">
+                        <div class="dash-l">Open positions</div>
+                        <div class="dash-big">4 / 8</div>
+                        <div class="dash-sm">NVDA · MSFT · AAPL · GLD</div>
+                    </div>
+                    <div class="dash-tile">
+                        <div class="dash-l">Today's trades</div>
+                        <div class="dash-big">6 of 15</div>
+                        <div class="dash-sm pos">4 wins · 2 losses</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Slide 3: order list — FILLED / PENDING / REJECTED *@
+        <div class="slide">
+            <div class="hero-preview">
+                <div class="ts">Recent orders</div>
+                <div class="dash-orders">
+                    <div class="dash-order">
+                        <span class="badge on">FILLED</span>
+                        <span class="ticker">NVDA</span>
+                        <span class="reason">Bullish entry: Q1 data-center revenue beat</span>
+                        <span class="px">14 @@ $179.42</span>
+                    </div>
+                    <div class="dash-order">
+                        <span class="badge warn">PENDING</span>
+                        <span class="ticker">MSFT</span>
+                        <span class="reason">Confirmation gate: 2/2 bullish signals in 90 min</span>
+                        <span class="px">awaiting fill</span>
+                    </div>
+                    <div class="dash-order">
+                        <span class="badge off">REJECTED</span>
+                        <span class="ticker">TSLA</span>
+                        <span class="reason">Earnings blackout: next earnings in 18h</span>
+                        <span class="px">skipped</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Pagination dots show which slide is active *@
+        <div class="carousel-dots">
+            <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
+        </div>
+    </div>
+</section>
+
+<div class="trust-band">
+    <div class="label">Powered by trusted financial data</div>
+    <div class="marquee">
+        <div class="marquee-track">
+            <span>Alpaca Markets</span><span class="dot">·</span>
+            <span>Finnhub</span><span class="dot">·</span>
+            <span>SEC EDGAR</span><span class="dot">·</span>
+            <span>Google News</span><span class="dot">·</span>
+            <span>Federal Reserve</span><span class="dot">·</span>
+            <span>Google Gemini AI</span><span class="dot">·</span>
+            <span>xAI Grok</span><span class="dot">·</span>
+            <span>Manifold Markets</span><span class="dot">·</span>
+            <span>Anthropic Claude</span><span class="dot">·</span>
+            @* Duplicate the list — the keyframes scroll the track by exactly 50% to loop seamlessly *@
+            <span>Alpaca Markets</span><span class="dot">·</span>
+            <span>Finnhub</span><span class="dot">·</span>
+            <span>SEC EDGAR</span><span class="dot">·</span>
+            <span>Google News</span><span class="dot">·</span>
+            <span>Federal Reserve</span><span class="dot">·</span>
+            <span>Google Gemini AI</span><span class="dot">·</span>
+            <span>xAI Grok</span><span class="dot">·</span>
+            <span>Manifold Markets</span><span class="dot">·</span>
+            <span>Anthropic Claude</span><span class="dot">·</span>
+        </div>
+    </div>
+</div>
+
+@* ════════════════════════════════════════════════════════════════════════
+   AT-A-GLANCE STATS
+   ════════════════════════════════════════════════════════════════════════ *@
+<section class="stat-strip">
+    <div class="stat"><div class="n">8</div><div class="l">News sources</div></div>
+    <div class="stat"><div class="n">4</div><div class="l">Safety gates</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">Exit strategies</div></div>
+    <div class="stat"><div class="n">Replay</div><div class="l">Backtest harness</div></div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════════════
+   HOW IT WORKS
+   ════════════════════════════════════════════════════════════════════════ *@
+<section id="how" class="section" style="scroll-margin-top: 80px">
+    <div class="inner">
+        <div class="section-eyebrow">How it works</div>
+        <h2>From headline to trade in seconds.</h2>
+        <p class="section-lead">
+            Every time the bot wakes up, it grabs the latest news for every ticker you follow.
+            It asks an AI whether the story is actually a catalyst. If the answer survives all
+            your safety checks, the bot places a market order through Alpaca. That's the whole loop.
+        </p>
+
+        <div class="flow">
+            <div class="step">
+                <div class="icon">📰</div>
+                <h4>1. Read the news</h4>
+                <p>Pulls the latest stories from Finnhub, SEC filings, insider trades, Google News,
+                and Fed announcements all at once.</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="step">
+                <div class="icon">🧠</div>
+                <h4>2. Decide what matters</h4>
+                <p>Google's Gemini classifies each headline as bullish, bearish, or noise, with a
+                confidence score. Macro context from prediction markets and the Fed gets mixed in too.</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="step">
+                <div class="icon">⚡</div>
+                <h4>3. Place the trade</h4>
+                <p>If the signal clears all your safety gates, an order goes to your Alpaca paper
+                account in seconds. Your dashboard updates live with positions, P&amp;L, and the reason for every trade.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════════════
+   PRODUCT DETAILS — three tabs replacing the old Coverage / Safety / Features sections.
+   The #features anchor (used by the nav menu) sits on the section so menu links still scroll
+   to it, then the JS at the bottom auto-activates the matching tab if the URL has #coverage,
+   #safety, or #features.
+   ════════════════════════════════════════════════════════════════════════ *@
+<section id="features" class="section dark" style="scroll-margin-top: 80px">
+    <div class="inner">
+        <div class="section-eyebrow">What's inside</div>
+        <h2>The bot, the gates, the replay trail.</h2>
+        <p class="section-lead">
+            The data it reads, the gates that protect you, and the tools that help you understand what happened. Tap any tab.
+        </p>
+
+        <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="coverage" role="tab" aria-selected="true">📡 Coverage</button>
+            <button class="tab" data-tab="safety" role="tab" aria-selected="false">🛡️ Safety</button>
+            <button class="tab" data-tab="capabilities" role="tab" aria-selected="false">⚙️ Features</button>
+        </div>
+
+        @* ─── Coverage tab ───────────────────────────────────────────────── *@
+        <div class="tab-panel active" data-panel="coverage" role="tabpanel">
+            <p class="dim" style="margin-bottom:20px;font-size:14px">
+                One feed can miss things, so we use eight. The more angles the bot has on a story, the harder it is for important news to slip past you.
+            </p>
+            <div class="source-grid">
+                <div class="source"><div class="ic">📡</div><div class="body"><strong>Finnhub per-ticker</strong><span>Real-time company news for every ticker you follow.</span><span class="free">Included</span></div></div>
+                <div class="source"><div class="ic">🏛️</div><div class="body"><strong>SEC EDGAR filings</strong><span>Official 8-K, 10-Q, and 10-K filings as they hit the SEC.</span><span class="free">Included</span></div></div>
+                <div class="source"><div class="ic">👤</div><div class="body"><strong>Insider trades</strong><span>When executives buy or sell their own stock.</span><span class="free">Included</span></div></div>
+                <div class="source"><div class="ic">🌐</div><div class="body"><strong>Google News</strong><span>Reuters, MarketWatch, Yahoo, Bloomberg, and dozens more.</span><span class="free">Included</span></div></div>
+                <div class="source"><div class="ic">🧠</div><div class="body"><strong>Anthropic Claude verification</strong><span>Optional Claude check with live web_search before a potential buy.</span><span class="paid">Configurable</span></div></div>
+                <div class="source"><div class="ic">🐦</div><div class="body"><strong>Grok X-trending</strong><span>Optional live X/Twitter search for trending tickers.</span><span class="paid">Configurable</span></div></div>
+                <div class="source"><div class="ic">🎯</div><div class="body"><strong>Manifold odds</strong><span>Prediction-market odds feeding into every prompt.</span><span class="free">Included</span></div></div>
+                <div class="source"><div class="ic">🏦</div><div class="body"><strong>Fed events</strong><span>Press releases and speeches from the Federal Reserve.</span><span class="free">Included</span></div></div>
+            </div>
+            <p class="dim" style="text-align:center;font-size:12px;margin-top:18px">
+                Self-hosted users bring their own API keys. Managed instances can include provider setup and operations.
+            </p>
+        </div>
+
+        @* ─── Safety tab ─────────────────────────────────────────────────── *@
+        <div class="tab-panel" data-panel="safety" role="tabpanel">
+            <p class="dim" style="margin-bottom:20px;font-size:14px">
+                One bullish headline is never enough. Every potential buy passes through up to five gates, cheapest first. Most signals get filtered out long before they reach the broker.
+            </p>
+            <div class="gate-stack">
+                <div class="gate-row"><div class="num">1</div><div class="meta"><strong>Sentiment + confidence gate</strong><span>The AI has to come back bullish, actionable, and above your confidence threshold. You can raise or lower it.</span></div><div class="cost">Core</div></div>
+                <div class="gate-row"><div class="num">2</div><div class="meta"><strong>Confirmation window</strong><span>The bot waits for matching signals on the same ticker before pulling the trigger.</span></div><div class="cost">Core</div></div>
+                <div class="gate-row"><div class="num">3</div><div class="meta"><strong>Earnings blackout</strong><span>No trades within your configured window around scheduled earnings.</span></div><div class="cost">Core</div></div>
+                <div class="gate-row"><div class="num">4</div><div class="meta"><strong>Grok second opinion</strong><span>Optional live X and web search to look for contradicting evidence before a buy.</span></div><div class="cost">Optional</div></div>
+                <div class="gate-row"><div class="num">5</div><div class="meta"><strong>Claude verification</strong><span>Optional web_search reasoning check that can approve, caution, or veto the trade.</span></div><div class="cost">Optional</div></div>
+            </div>
+            <p class="dim" style="text-align:center;font-size:12px;margin-top:16px">
+                On top of that: position size cap, daily loss kill switch, max trades per day, pending-order-aware sizing. All built in.
+            </p>
+        </div>
+
+        @* ─── Features tab ───────────────────────────────────────────────── *@
+        <div class="tab-panel" data-panel="capabilities" role="tabpanel">
+            <p class="dim" style="margin-bottom:20px;font-size:14px">
+                Everyone runs the same underlying bot, but you control how yours behaves. Set a ticker blacklist, block bad-news keywords, boost good ones, and define when your bot is allowed to trade. Your bot will look nothing like anyone else's.
+            </p>
+            <div class="feature-grid">
+                <div class="feature"><div class="icon">🎚️</div><h4>Every threshold is yours</h4><p>Minimum confidence, max position size, daily loss limit, max trades per day, exit percentages. Tune anything.</p></div>
+                <div class="feature"><div class="icon">🚫</div><h4>Personal trading rules</h4><p>Tickers to never buy. Keywords that block a trade. Keywords that boost confidence. Hours when the bot is allowed to open positions. Minimum hold time. Make your bot truly yours.</p></div>
+                <div class="feature"><div class="icon">🛑</div><h4>Five exit strategies</h4><p>Hard stop loss, trailing stop with peak tracking, take profit, max hold time, bearish news exit. Mix and match.</p></div>
+                <div class="feature"><div class="icon">🔭</div><h4>Dynamic ticker discovery</h4><p>The bot watches the broader news firehose for unusual buzz and promotes high-mention tickers onto a temporary watchlist for extra scanning.</p></div>
+                <div class="feature"><div class="icon">📊</div><h4>Live dashboard + reports</h4><p>Account equity, open positions with live P&amp;L, every order, every AI decision, an equity curve for the last week, and lifetime win rate stats.</p></div>
+                <div class="feature"><div class="icon">⏪</div><h4>Replay backtesting</h4><p>Replay stored decisions, submitted orders, and price snapshots against shadow portfolios to see which gates helped or hurt.</p></div>
+                <div class="feature"><div class="icon">🪙</div><h4>Paper money, real workflow</h4><p>Alpaca's paper environment mirrors the real market. Same order routing, same fills, same data. Practice with $100,000 of paper without spending a dollar.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Tab switcher for the three-tab product section. Also reads the URL hash on load
+    // so deep links like /#safety land on the right tab. The nav menu still uses #features
+    // which corresponds to the third tab (capabilities).
+    (function() {
+        var tabs = document.querySelectorAll('.tabs .tab');
+        if (!tabs.length) return;
+        function activate(name) {
+            tabs.forEach(function(t) {
+                var on = t.dataset.tab === name;
+                t.classList.toggle('active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            document.querySelectorAll('.tab-panel').forEach(function(p) {
+                p.classList.toggle('active', p.dataset.panel === name);
+            });
+        }
+        tabs.forEach(function(t) { t.addEventListener('click', function() { activate(t.dataset.tab); }); });
+        // Deep-link support: /#coverage, /#safety, /#features (alias for capabilities)
+        var hash = (location.hash || '').replace('#', '').toLowerCase();
+        if (hash === 'features') activate('capabilities');
+        else if (hash === 'coverage' || hash === 'safety') activate(hash);
+    })();
+</script>
+
+@* ════════════════════════════════════════════════════════════════════════
+   GET STARTED
+   ════════════════════════════════════════════════════════════════════════ *@
+<section class="section">
+    <div class="inner">
+        <div class="section-eyebrow">Get started</div>
+        <h2>You'll need a paper trading account first.</h2>
+        <p class="section-lead">
+            Owlnest doesn't broker trades itself. It routes orders through <strong>your own Alpaca paper account</strong>,
+            which keeps you in control. The bot can never spend money you haven't put there.
+            The whole setup takes about five minutes and is completely free.
+        </p>
+
+        <div class="flow">
+            <div class="step">
+                <div class="icon">🅰️</div>
+                <h4>1. Open an Alpaca paper account</h4>
+                <p>Free signup at <a href="https://alpaca.markets/" target="_blank" rel="noopener">alpaca.markets</a>.
+                You get $100,000 of paper money straight away. Generate an API key and secret from
+                their dashboard. Remember, paper account means no real money is ever required.</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="step">
+                <div class="icon">🦉</div>
+                <h4>2. Run the open-source app</h4>
+                <p>Clone the repository, configure your database and provider keys, then paste your
+                Alpaca paper key and secret into your local or managed instance.</p>
+            </div>
+            <div class="arrow">→</div>
+            <div class="step">
+                <div class="icon">▶️</div>
+                <h4>3. Configure and start</h4>
+                <p>Review the default settings (they're conservative on purpose), add the sources
+                and AI checks you want, and hit Start on your dashboard. Your bot starts watching the news.
+                Stop it whenever you want.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════════════
+   OPEN SOURCE + MANAGED INSTANCE
+   ════════════════════════════════════════════════════════════════════════ *@
+<section id="managed" class="section dark" style="scroll-margin-top: 80px">
+    <div class="inner">
+        <div class="section-eyebrow">Open source</div>
+        <h2>Run it yourself, or ask us to manage it.</h2>
+        <p class="section-lead">
+            The core bot is built to be readable, auditable, and self-hosted. If you like the idea
+            but do not want to run cloud infrastructure, API keys, upgrades, or monitoring, contact
+            us about a managed instance.
+        </p>
+
+        <div class="offer-grid">
+            <div class="offer-card">
+                <div class="offer-name">Self-host</div>
+                <div class="offer-tag">For builders who want the code in their own hands.</div>
+                <ul>
+                    <li>Open-source code on GitHub</li>
+                    <li>Bring your own Alpaca and data provider keys</li>
+                    <li>Paper trading workflow by default</li>
+                    <li>Settings, gates, dashboard, and reports included</li>
+                    <li>Replay backtest over stored decisions and orders</li>
+                </ul>
+                <div class="offer-cta"><a href="https://github.com/owlnest-trade/owlnest" target="_blank" rel="noopener" class="btn" style="width:100%; text-align:center">View source</a></div>
+            </div>
+
+            <div class="offer-card">
+                <div class="offer-name">Replay and tune</div>
+                <div class="offer-tag">Use the bot's stored history to improve settings.</div>
+                <ul>
+                    <li>Replay actual decisions, submitted orders, and price snapshots</li>
+                    <li>Compare baseline, confirmation, Grok, Claude, and macro gates</li>
+                    <li>Track shadow portfolios to see which filters improve P&amp;L</li>
+                    <li>Inspect every skipped trade and every accepted trade</li>
+                    <li>Tune confidence, confirmation, and stop settings from evidence</li>
+                </ul>
+                <div class="offer-cta"><a asp-page="/Reports" class="btn muted" style="width:100%; text-align:center">Open reports</a></div>
+            </div>
+
+            <div class="offer-card featured">
+                <div class="offer-name">Managed instance</div>
+                <div class="offer-tag">For people who want the bot hosted for them.</div>
+                <ul>
+                    <li>Hosted web app and database</li>
+                    <li>Deployment, upgrades, and monitoring handled</li>
+                    <li>Help connecting Alpaca and provider keys</li>
+                    <li>Backups and replay-ready trading history</li>
+                    <li>Contact us if you are interested</li>
+                </ul>
+                <div class="offer-cta"><a asp-page="/Contact" class="btn" style="width:100%; text-align:center">Contact us</a></div>
+            </div>
+        </div>
+
+        <p class="dim" style="text-align:center;font-size:13px;margin-top:24px;max-width:680px;margin-left:auto;margin-right:auto">
+            Managed instances are not a trading signal service or investment advice. The bot remains paper-first, configurable, and inspectable.
+        </p>
+    </div>
+</section>
+
+@* TECH STACK section removed — partners are already implied by the trust band marquee at the top. *@
+
+@* ════════════════════════════════════════════════════════════════════════
+   FAQ
+   ════════════════════════════════════════════════════════════════════════ *@
+<section id="faq" class="section" style="scroll-margin-top: 80px">
+    <div class="inner">
+        <div class="section-eyebrow">Common questions</div>
+        <h2>Things people ask first.</h2>
+        <p class="section-lead">If we missed yours, drop us a line through the <a asp-page="/Contact">contact form</a>.</p>
+
+        <div class="faq">
+            <details>
+                <summary>Is this real money or paper money?</summary>
+                <p>Paper money only. Every trade routes through Alpaca's paper environment, which mirrors the real market for prices and fills but uses simulated cash. You cannot lose actual dollars using owlnest.</p>
+            </details>
+            <details>
+                <summary>Why do I need to sign up for Alpaca separately?</summary>
+                <p>So your paper portfolio belongs to you, not to us. Owlnest never holds your funds and can never spend money you didn't put into Alpaca yourself. We just route orders through your account.</p>
+            </details>
+            <details>
+                <summary>Do I have to bring my own news API keys?</summary>
+                <p>If you self-host, yes: you bring the provider keys you want to use. If you want a hosted setup, contact us about a managed instance where we help with the operational pieces.</p>
+            </details>
+            <details>
+                <summary>How is my bot different from anyone else's?</summary>
+                <p>Each setup has its own universe of tickers, risk thresholds, keyword blocklist, trading windows, and API providers. The code may be shared, but the rules, data, and behavior are yours.</p>
+            </details>
+            <details>
+                <summary>What does the AI actually do?</summary>
+                <p>For each headline, Google Gemini classifies the sentiment as bullish, bearish, or neutral, and assigns a confidence score. It also considers macro context from prediction markets and the Fed. Only stories that pass the confidence threshold (and your other gates) become candidate trades.</p>
+            </details>
+            <details>
+                <summary>Can I lose money with it?</summary>
+                <p>You can lose paper money. Owlnest defaults to Alpaca's paper environment, so you cannot lose real dollars unless you explicitly flip Live mode on. The default settings are conservative, but no bot can make trading risk disappear.</p>
+            </details>
+            <details>
+                <summary>What does replay backtesting do?</summary>
+                <p>Replay uses stored decisions, submitted orders, and price snapshots to compare the production path against shadow portfolios. It helps you see whether filters such as confirmation, Grok, Claude, and macro context improved or hurt the outcome.</p>
+            </details>
+            <details>
+                <summary>How do I stop the bot?</summary>
+                <p>One button on your dashboard. The bot exits within a few seconds. Existing positions stay open in your Alpaca account; you can close them manually or restart the bot and let the exit strategies handle them.</p>
+            </details>
+            <details>
+                <summary>Is my data private?</summary>
+                <p>Your Alpaca keys are encrypted at rest using ASP.NET Core Data Protection. Only your running bot can decrypt them in memory. Nobody, including us, can see them in plain text. Your decisions and trades are also private to your account.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════════════
+   DISCLAIMER
+   ════════════════════════════════════════════════════════════════════════ *@
+<div style="padding: 32px 24px 0">
+    <div class="disclaimer">
+        <h3>⚠️ Important: paper by default, live by choice</h3>
+        <p>
+            <strong>Owlnest defaults to Alpaca's paper trading environment</strong>, where every order uses
+            simulated money. You can optionally switch your account to <strong>Live mode</strong>, which routes the
+            same bot through your real Alpaca brokerage account using real cash. Doing that requires
+            ticking a separate consent box, typing the word LIVE to confirm, and accepting the full
+            <a asp-page="/Terms">Risk Disclosure</a>. In Live mode, <strong>you can lose real money</strong>.
+        </p>
+        <p>
+            Nothing here is financial advice. The AI is good at scoring news, but it can still be
+            wrong. Even with every safety gate enabled, false signals happen. Past paper performance
+            does not guarantee future results in live markets.
+        </p>
+        <p>
+            We are not affiliated with Alpaca, Finnhub, Google, xAI, or any other data provider
+            mentioned. By signing up, you agree to our <a asp-page="/Terms">Risk Disclosure &amp; Terms of Use</a>.
+        </p>
+    </div>
+</div>
+
+@* ════════════════════════════════════════════════════════════════════════
+   FINAL CTA
+   ════════════════════════════════════════════════════════════════════════ *@
+<section class="final-cta">
+    <h2>Ready to inspect the bot?</h2>
+    <p>Run the open-source core yourself, or contact us if you are interested in a managed instance.</p>
+    <div class="cta-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <a href="https://github.com/owlnest-trade/owlnest" target="_blank" rel="noopener" class="btn" style="padding:14px 36px;font-size:16px">View on GitHub</a>
+        <a asp-page="/Contact" class="ghost" style="padding:14px 28px;font-size:16px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;font-weight:600;text-decoration:none">Contact us</a>
+    </div>
+</section>

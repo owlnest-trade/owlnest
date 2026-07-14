@@ -1,0 +1,62 @@
+@page
+@model TradingBot.Web.Pages.ContactModel
+@{
+    ViewData["Title"] = "Contact us";
+}
+
+<h1>Get in touch</h1>
+<p class="dim">Got a question, a feature request, a bug report, or interest in a managed instance? Drop us a line. Public signup is closed.</p>
+
+@if (Model.Sent)
+{
+    <div class="card" style="border-color: var(--bull); background: rgba(63,185,80,0.08)">
+        <h2 style="margin-top:0">Thanks, we got it. 🦉</h2>
+        <p style="margin:0">Your message landed safely. We'll reply to the email you gave us. Feel free to send another one if you forgot something.</p>
+    </div>
+}
+
+<form method="post" class="card">
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="errors">
+            <ul>
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="row">
+        <div class="field">
+            <label asp-for="Input.Name">Your name</label>
+            <input asp-for="Input.Name" maxlength="200" />
+        </div>
+        <div class="field">
+            <label asp-for="Input.Email">Your email</label>
+            <input asp-for="Input.Email" type="email" maxlength="200" />
+            <div class="help">We'll use this to reply, nothing else.</div>
+        </div>
+    </div>
+
+    <div class="field">
+        <label asp-for="Input.Subject">Subject</label>
+        <input asp-for="Input.Subject" maxlength="200" placeholder="What is this about?" />
+    </div>
+
+    <div class="field">
+        <label asp-for="Input.Message">Message</label>
+        <textarea asp-for="Input.Message" rows="8" maxlength="4000" placeholder="Tell us what's on your mind."></textarea>
+        <div class="help">Plain text only. Max 4000 characters.</div>
+    </div>
+
+    <button type="submit" style="margin-top: 12px">Send message</button>
+</form>
+
+<div class="card" style="opacity: 0.85">
+    <h3>Other ways to reach us</h3>
+    <p>If you'd rather email directly, you can write to <strong>hello@owlnest.trade</strong>.</p>
+    <p>Managed-instance access is handled manually. Existing users should log in first for account-specific help.</p>
+    <p class="dim" style="font-size:12px;margin-top:14px">Owlnest is a paper-trading app. We can't help with questions about your real brokerage account.</p>
+</div>

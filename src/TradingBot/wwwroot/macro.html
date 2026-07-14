@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradingBot — Macro Context (Polymarket)</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --bull: #3fb950;
+      --bear: #f85149;
+      --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    header h1 .sub {
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 13px;
+      margin-left: 8px;
+    }
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+    }
+    header a:hover { text-decoration: underline; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .pill.ok { background: rgba(63,185,80,0.15); color: var(--bull); }
+    .pill.muted { background: rgba(139,148,158,0.15); color: var(--muted); }
+    .pill.warn { background: rgba(210,153,34,0.15); color: var(--warn); }
+
+    main {
+      padding: 16px 24px 64px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+    }
+
+    .market {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+    .market:last-child { border-bottom: none; }
+    .market:hover { background: rgba(255,255,255,0.02); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+
+    .prob {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      padding: 6px 0;
+      border-radius: 6px;
+    }
+    .prob.high { background: rgba(63,185,80,0.12); color: var(--bull); }
+    .prob.mid  { background: rgba(210,153,34,0.12); color: var(--warn); }
+    .prob.low  { background: rgba(248,81,73,0.12); color: var(--bear); }
+
+    .question {
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .question a {
+      color: var(--text);
+      text-decoration: none;
+    }
+    .question a:hover { color: var(--accent); text-decoration: underline; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .meta .volume { font-variant-numeric: tabular-nums; }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-row input {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font: inherit;
+      flex: 1;
+      min-width: 200px;
+    }
+    .filter-row label { color: var(--muted); font-size: 12px; }
+
+    .empty {
+      padding: 32px 0;
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .footnote {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    .footnote a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Macro Context <span class="sub">via Polymarket prediction markets</span></h1>
+    <span id="pill-status" class="pill muted">…</span>
+    <span style="margin-left:auto"><a href="/">← back to trading dashboard</a></span>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Active markets matching your filters</h2>
+
+      <div class="filter-row">
+        <label>Search</label>
+        <input id="f-search" placeholder="Filter by keyword (e.g. fed, bitcoin, iran)…" />
+        <span id="count" style="color:var(--muted);font-size:12px">0 markets</span>
+      </div>
+
+      <div id="markets">
+        <div class="empty">Loading from Polymarket… (first poll completes within 10 minutes of bot startup)</div>
+      </div>
+
+      <div class="footnote">
+        Probabilities are from <a href="https://polymarket.com" target="_blank" rel="noopener">Polymarket</a> — real-money prediction markets. Click any question to view the market on Polymarket.
+        <br />Data is informational only; the trading bot does not act on it.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let all = [];
+    let search = '';
+
+    function fmtMoney(n) {
+      if (n == null) return '—';
+      const v = Number(n);
+      if (v >= 1_000_000) return '$' + (v / 1_000_000).toFixed(1) + 'M';
+      if (v >= 1_000)     return '$' + (v / 1_000).toFixed(0) + 'K';
+      return '$' + v.toFixed(0);
+    }
+
+    function fmtAgo(iso) {
+      if (!iso) return '—';
+      const sec = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+      if (sec < 60) return sec + 's ago';
+      if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+      return Math.floor(sec / 3600) + 'h ago';
+    }
+
+    function fmtEnd(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const days = Math.round((d.getTime() - Date.now()) / 86400000);
+      if (days < 0) return 'ended';
+      if (days < 1) return 'today';
+      if (days < 30) return days + 'd';
+      const months = Math.round(days / 30);
+      return months + 'mo';
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function probClass(p) {
+      if (p >= 0.65) return 'high';
+      if (p >= 0.35) return 'mid';
+      return 'low';
+    }
+
+    async function refresh() {
+      let r;
+      try { r = await fetch('/api/macro'); }
+      catch { return; }
+      if (!r.ok) return;
+      const data = await r.json();
+
+      const status = data.enabled
+        ? (data.lastUpdatedUtc ? 'Updated ' + fmtAgo(data.lastUpdatedUtc) : 'Waiting for first poll…')
+        : 'Disabled (Polymarket:Enabled = false)';
+      const cls = data.enabled && data.lastUpdatedUtc ? 'ok' : (data.enabled ? 'warn' : 'muted');
+      $('pill-status').textContent = status;
+      $('pill-status').className = 'pill ' + cls;
+
+      all = data.markets || [];
+      render();
+    }
+
+    function render() {
+      const q = search.trim().toLowerCase();
+      const list = q ? all.filter(m => m.question.toLowerCase().includes(q)) : all;
+      $('count').textContent = q ? `${list.length} of ${all.length}` : `${all.length} markets`;
+
+      if (list.length === 0) {
+        $('markets').innerHTML = '<div class="empty">No markets match your filter.</div>';
+        return;
+      }
+
+      $('markets').innerHTML = list.map(m => {
+        const pct = (m.yesPrice * 100).toFixed(0) + '%';
+        return `<div class="market">
+          <div class="prob ${probClass(m.yesPrice)}">${pct}</div>
+          <div>
+            <div class="question"><a href="${escapeHtml(m.url)}" target="_blank" rel="noopener">${escapeHtml(m.question)}</a></div>
+            <div class="meta">
+              <span class="volume">${fmtMoney(m.volume)} volume</span>
+              <span>resolves: ${fmtEnd(m.endDate)}</span>
+            </div>
+          </div>
+          <div style="color:var(--muted);font-size:11px;text-align:right">YES</div>
+        </div>`;
+      }).join('');
+    }
+
+    $('f-search').addEventListener('input', e => { search = e.target.value; render(); });
+
+    refresh();
+    setInterval(refresh, 30000);  // dashboard polls every 30s; actual data updates every 10 min server-side
+  </script>
+</body>
+</html>

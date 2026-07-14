@@ -1,0 +1,209 @@
+@page
+@model TradingBot.Web.Pages.ReportsModel
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <h1 style="margin:0">Reports</h1>
+    <a asp-page="/Dashboard" class="btn muted" style="margin-left:auto">← Dashboard</a>
+</div>
+
+<div class="card">
+    <h3>Equity curve (last 7 days)</h3>
+    <div id="equity-chart-wrap" style="position:relative;height:260px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+        <svg id="equity-chart" viewBox="0 0 800 260" preserveAspectRatio="none" style="width:100%;height:100%"></svg>
+    </div>
+    <div id="equity-summary" class="dim" style="margin-top:10px;font-size:13px">—</div>
+</div>
+
+<div class="card">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">
+        <div>
+            <h3 style="margin-bottom:4px">Replay backtest</h3>
+            <div id="backtest-meta" class="dim" style="font-size:13px">Loading replay...</div>
+        </div>
+        <button id="backtest-refresh" class="btn muted" style="margin-left:auto" type="button">Refresh</button>
+    </div>
+    <div style="overflow:auto">
+        <table id="backtest-tbl">
+            <thead>
+                <tr>
+                    <th>Portfolio</th>
+                    <th class="num">Entries</th>
+                    <th class="num">Exits</th>
+                    <th class="num">Open</th>
+                    <th class="num">P&amp;L</th>
+                    <th class="num">Return</th>
+                    <th class="num">Vs actual</th>
+                    <th class="num">Win rate</th>
+                </tr>
+            </thead>
+            <tbody><tr><td colspan="8" class="dim" style="text-align:center;padding:14px">No replay data yet</td></tr></tbody>
+        </table>
+    </div>
+    <div id="execution-summary" class="dim" style="margin-top:10px;font-size:13px">-</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:16px">
+    <div class="card">
+        <h3>Lifetime stats</h3>
+        <div class="kv">
+            <div>Total trades</div><div id="stat-trades">—</div>
+            <div>Filled buys</div><div id="stat-buys">—</div>
+            <div>Filled sells</div><div id="stat-sells">—</div>
+            <div>Rejected</div><div id="stat-rejected">—</div>
+            <div>Win rate</div><div id="stat-winrate">—</div>
+            <div>Avg winner</div><div id="stat-avgwin" class="num-pos">—</div>
+            <div>Avg loser</div><div id="stat-avgloss" class="num-neg">—</div>
+        </div>
+    </div>
+    <div class="card">
+        <h3>Top tickers by activity</h3>
+        <table id="top-tickers-tbl">
+            <thead><tr><th>Ticker</th><th class="num">Decisions</th><th class="num">Orders</th></tr></thead>
+            <tbody><tr><td colspan="3" class="dim" style="text-align:center;padding:14px">No data yet</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const $ = id => document.getElementById(id);
+        const esc = s => (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        const fmtMoney = n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtPct = n => n == null ? '—' : (Number(n) * 100).toFixed(2) + '%';
+        const fmtBps = n => n == null ? 'bps n/a' : Number(n).toFixed(1) + ' bps';
+        // All timestamps shown in Sydney time. Backend stores UTC; conversion is client-side.
+        const SYDNEY_TZ = 'Australia/Sydney';
+        const fmtDate = iso => { if (!iso) return '—'; return new Date(iso).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', timeZone: SYDNEY_TZ }); };
+        async function get(url) { try { const r = await fetch(url); if (!r.ok) return null; return await r.json(); } catch { return null; } }
+
+        function drawEquityChart(snapshots) {
+            const svg = $('equity-chart');
+            svg.innerHTML = '';
+            const W = 800, H = 260, padX = 6, padY = 16;
+            if (!snapshots || snapshots.length < 2) {
+                svg.innerHTML = '<text x="400" y="130" fill="#8b949e" text-anchor="middle" font-family="sans-serif" font-size="14">Need at least 2 equity snapshots to draw a chart — let the bot run for a couple of hours.</text>';
+                $('equity-summary').textContent = 'No data yet.';
+                return;
+            }
+            const eq = snapshots.map(s => Number(s.equity));
+            const min = Math.min(...eq), max = Math.max(...eq);
+            const range = max - min || 1;
+            const xStep = (W - 2 * padX) / (snapshots.length - 1);
+            const points = eq.map((v, i) => {
+                const x = padX + i * xStep;
+                const y = padY + (H - 2 * padY) * (1 - (v - min) / range);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+            const startEq = eq[0], endEq = eq[eq.length - 1];
+            const delta = endEq - startEq;
+            const deltaPct = startEq > 0 ? delta / startEq : 0;
+            const stroke = delta >= 0 ? '#3fb950' : '#f85149';
+            svg.innerHTML = `
+                <polyline points="${points}" fill="none" stroke="${stroke}" stroke-width="2" />
+                <text x="${padX + 4}" y="${padY + 12}" fill="#8b949e" font-family="sans-serif" font-size="11">${fmtMoney(max)}</text>
+                <text x="${padX + 4}" y="${H - padY - 2}" fill="#8b949e" font-family="sans-serif" font-size="11">${fmtMoney(min)}</text>
+            `;
+            const sign = delta >= 0 ? '+' : '';
+            const cls = delta >= 0 ? 'num-pos' : 'num-neg';
+            $('equity-summary').innerHTML = `${snapshots.length} snapshots · start ${fmtMoney(startEq)} · now <strong>${fmtMoney(endEq)}</strong> · change <span class="${cls}">${sign}${fmtMoney(delta)} (${sign}${fmtPct(deltaPct)})</span>`;
+        }
+
+        function renderBacktest(report) {
+            const tbody = $('backtest-tbl').querySelector('tbody');
+            if (!report || !report.portfolios || report.portfolios.length === 0) {
+                $('backtest-meta').textContent = 'No replay data yet.';
+                tbody.innerHTML = '<tr><td colspan="8" class="dim" style="text-align:center;padding:14px">No replay data yet</td></tr>';
+                $('execution-summary').textContent = '-';
+                return;
+            }
+
+            const from = fmtDate(report.fromUtc);
+            const to = fmtDate(report.toUtc);
+            $('backtest-meta').textContent =
+                `${report.decisionsAnalyzed} decisions, ${report.ordersAnalyzed} orders, ${report.priceSnapshots} price snapshots, ${from} to ${to}. ` +
+                `Fixed ${fmtMoney(report.tradeNotional)} trades on ${fmtMoney(report.initialCapital)} starting capital.`;
+
+            tbody.innerHTML = report.portfolios.map(p => {
+                const pnlCls = Number(p.pnl) >= 0 ? 'num-pos' : 'num-neg';
+                const delta = p.deltaVsActual;
+                const deltaCls = delta == null ? '' : Number(delta) >= 0 ? 'num-pos' : 'num-neg';
+                return `<tr title="${esc(p.note || '')}">
+                    <td><strong>${esc(p.name)}</strong><div class="dim" style="font-size:12px">${esc(p.id)}</div></td>
+                    <td class="num">${p.entries}</td>
+                    <td class="num">${p.exits}</td>
+                    <td class="num">${p.openPositions}</td>
+                    <td class="num ${pnlCls}">${fmtMoney(p.pnl)}</td>
+                    <td class="num ${pnlCls}">${fmtPct(p.pnlPct)}</td>
+                    <td class="num ${deltaCls}">${delta == null ? 'n/a' : fmtMoney(delta)}</td>
+                    <td class="num">${p.winRate == null ? 'n/a' : Math.round(p.winRate * 100) + '%'}</td>
+                </tr>`;
+            }).join('');
+
+            const ex = report.execution || {};
+            $('execution-summary').textContent =
+                `Execution: ${ex.filledOrders ?? 0}/${ex.submittedOrders ?? 0} filled` +
+                ` (${fmtPct(ex.fillRate)}), avg signed slippage ${fmtBps(ex.averageSlippageBps)}.`;
+        }
+
+        async function refresh() {
+            const equity = await get('/api/me/equity?hours=168') || [];
+            drawEquityChart(equity);
+            renderBacktest(await get('/api/me/backtest?limit=2000&initialCapital=10000&tradeNotional=1000'));
+
+            // Lifetime stats — derive from orders + decisions.
+            const orders = await get('/api/me/orders?limit=200') || [];
+            const decisions = await get('/api/me/decisions?limit=500') || [];
+            const filled = orders.filter(o => (o.status || '').toLowerCase() === 'filled');
+            const filledBuys = filled.filter(o => o.side === 'Buy');
+            const filledSells = filled.filter(o => o.side === 'Sell');
+            const rejected = decisions.filter(d => d.outcome === 'Rejected').length;
+
+            // Naive realized P&L per sell: filled sells where price * qty > matched buy price * qty.
+            // Without trade-pairing we approximate: win = sell price >= position avg entry at time of sale.
+            // For MVP, count win = sell with filledAvgPrice > 0 and reason contains "+" (e.g. "+P&L"); pragmatic but rough.
+            let wins = 0, losses = 0, winSum = 0, lossSum = 0;
+            for (const s of filledSells) {
+                const r = (s.reason || '').toLowerCase();
+                // Look for "+X%" in reason as a heuristic win indicator
+                const m = r.match(/banking\s*\+?(-?\d+(?:\.\d+)?)%/);
+                if (m) {
+                    const pct = parseFloat(m[1]);
+                    if (pct > 0) { wins++; winSum += pct; } else { losses++; lossSum += pct; }
+                    continue;
+                }
+                if (r.includes('stop loss') || r.includes('bearish news exit')) { losses++; lossSum += -3; }
+                else if (r.includes('trailing stop') || r.includes('take profit')) { wins++; winSum += 5; }
+            }
+            const totalDecided = wins + losses;
+            $('stat-trades').textContent = orders.length;
+            $('stat-buys').textContent = filledBuys.length;
+            $('stat-sells').textContent = filledSells.length;
+            $('stat-rejected').textContent = rejected;
+            $('stat-winrate').textContent = totalDecided > 0 ? Math.round(100 * wins / totalDecided) + '%' : '—';
+            $('stat-avgwin').textContent = wins > 0 ? '+' + (winSum / wins).toFixed(2) + '%' : '—';
+            $('stat-avgloss').textContent = losses > 0 ? (lossSum / losses).toFixed(2) + '%' : '—';
+
+            // Top tickers by activity
+            const tickerCount = {};
+            for (const d of decisions) tickerCount[d.ticker] = (tickerCount[d.ticker] || { decisions: 0, orders: 0 });
+            for (const d of decisions) tickerCount[d.ticker].decisions++;
+            for (const o of orders) {
+                if (!tickerCount[o.ticker]) tickerCount[o.ticker] = { decisions: 0, orders: 0 };
+                tickerCount[o.ticker].orders++;
+            }
+            const top = Object.entries(tickerCount).sort((a, b) => (b[1].decisions + b[1].orders) - (a[1].decisions + a[1].orders)).slice(0, 10);
+            const tbody = $('top-tickers-tbl').querySelector('tbody');
+            tbody.innerHTML = top.length === 0
+                ? '<tr><td colspan="3" class="dim" style="text-align:center;padding:14px">No data yet</td></tr>'
+                : top.map(([t, c]) => `<tr><td><strong>${esc(t)}</strong></td><td class="num">${c.decisions}</td><td class="num">${c.orders}</td></tr>`).join('');
+        }
+
+        $('backtest-refresh')?.addEventListener('click', async () =>
+            renderBacktest(await get('/api/me/backtest?limit=2000&initialCapital=10000&tradeNotional=1000')));
+        refresh();
+        setInterval(refresh, 10000);
+    </script>
+}

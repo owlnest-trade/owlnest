@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TradingBot.Web/TradingBot.Web.csproj" />
+    <Project Path="src/TradingBot/TradingBot.csproj" />
+  </Folder>
+</Solution>

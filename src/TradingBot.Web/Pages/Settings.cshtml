@@ -1,0 +1,635 @@
+@page
+@model TradingBot.Web.Pages.SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<h1>Your bot settings</h1>
+<p class="dim">Every knob the bot uses, grouped into tabs. Changes take effect next time you start your bot. Hover any label for a quick reminder.</p>
+
+@*
+   Tabbed Settings. One <form> wraps every tab so a single Save submits the whole UserSettings row,
+   regardless of which tab is active. Tabs are pure presentation — hidden panels still post their inputs.
+   We persist the active tab via URL hash (#news, #verify, etc.) so reloading after Save lands you back
+   in the same tab, and via localStorage for hash-less first loads.
+*@
+
+<form method="post" id="settings-form">
+
+    @* Hidden field tracking which tab is currently visible. Populated by the tab JS so the
+       server can echo it back on the post-save redirect — keeps the user where they were. *@
+    <input type="hidden" name="ActiveTab" id="settings-active-tab" value="" />
+
+    <div class="tabs" role="tablist" style="margin-top: 8px">
+        <button type="button" class="tab" role="tab" data-tab="overview">Overview</button>
+        <button type="button" class="tab" role="tab" data-tab="news">News feeds</button>
+        <button type="button" class="tab" role="tab" data-tab="verify">Verification &amp; AI</button>
+        <button type="button" class="tab" role="tab" data-tab="rules">Personal rules</button>
+        <button type="button" class="tab" role="tab" data-tab="risk">Risk &amp; exits</button>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       TAB 1: OVERVIEW — tier, master switches, universe.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div class="tab-panel" data-panel="overview" role="tabpanel">
+
+        <div class="card" style="border-color: var(--accent)">
+            <h2>💎 Subscription tier</h2>
+            <p class="dim">Your tier controls universe size, poll speed, dynamic discovery, commodities, and the AI verification gates. Other settings still apply but are bounded by your tier.</p>
+            <div class="field">
+                <label asp-for="Input.Tier">Tier</label>
+                <select asp-for="Input.Tier" style="max-width: 280px">
+                    <option value="Starter">Starter — $20/mo</option>
+                    <option value="Plus">Plus — $50/mo</option>
+                    <option value="Pro">Pro — $100/mo</option>
+                </select>
+                <div class="help">
+                    <strong>Starter</strong>: 20 fixed tickers, no commodities, news check every 10 min. <br>
+                    <strong>Plus</strong>: 30 fixed + 10 dynamic, +commodity ETFs, news check every 5 min, +Grok X-trending discovery, +Grok 2nd-opinion gate. <br>
+                    <strong>Pro</strong>: unlimited universe, news check every 1 min, +Claude verification gate (stack Grok + Claude for double sign-off). <br>
+                    <em>Switching tiers is instant and takes effect next time you start the bot. Higher-tier features silently no-op on lower tiers.</em>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔘 Master switches</h2>
+            <p class="dim">Top-level toggles that override everything else.</p>
+            <div class="row">
+                <div class="field">
+                    <label><input type="checkbox" asp-for="Input.TradingEnabled" /> <strong>Trading enabled</strong></label>
+                    <div class="help">When off, the bot still analyzes news and logs everything but submits zero orders. Useful for watching what the bot <em>would</em> do before letting it actually trade. <strong>Leave off for the first few days.</strong></div>
+                </div>
+                <div class="field">
+                    <label><input type="checkbox" asp-for="Input.RegularHoursOnly" /> Regular hours only</label>
+                    <div class="help">If on, the bot only trades during US regular market hours (9:30 am – 4:00 pm ET, Mon–Fri). Off = orders queue for the next open. Recommended: on.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📋 Universe</h2>
+            <p class="dim">Tickers the bot always watches for news. Dynamic discovery (News feeds tab) can add more on the fly.</p>
+            <div class="field">
+                <label asp-for="Input.UniverseCsv">Tickers (comma-separated)</label>
+                <textarea asp-for="Input.UniverseCsv" rows="3"></textarea>
+                <div class="help">Example: <code>AAPL, MSFT, NVDA, TSLA, GLD, USO</code>. Mid-caps with less algorithmic coverage tend to be better news-trading hunting grounds than mega-caps. Aim for 10–30 tickers; more than 50 starts hitting Finnhub rate limits.</div>
+            </div>
+        </div>
+
+        <div class="card" style="border-color: rgba(247,147,26,0.4)">
+            <h2>🪙 Crypto universe <span class="dim" style="font-size:13px;font-weight:normal">— 24/7</span></h2>
+            <p class="dim">Optional. Crypto trades 24/7 through your Alpaca account using fractional notional orders, so a tiny position cap is fine even with BTC at $90k. Crypto symbols skip SEC EDGAR / Form 4 / earnings blackout / regular-hours gating since none of those apply.</p>
+            <div class="field">
+                <label asp-for="Input.CryptoUniverseCsv">Crypto symbols (comma-separated, Alpaca format)</label>
+                <textarea asp-for="Input.CryptoUniverseCsv" rows="2"></textarea>
+                <div class="help">
+                    Example: <code>BTC/USD, ETH/USD, SOL/USD, AVAX/USD, DOGE/USD</code>. Must use Alpaca's <code>SYMBOL/USD</code> format with the forward slash — otherwise the bot treats it as an equity. Leave empty to disable crypto trading entirely. Default cap is 10 crypto symbols; Pro is unlimited.
+                </div>
+            </div>
+            <p class="dim" style="font-size:12px;line-height:1.6;margin-top:10px">
+                <strong>News source:</strong> Google News with translated coin keywords (BTC/USD → "Bitcoin"). The Grok &amp; Claude verification gates work identically to equities. <strong>Live mode warning:</strong> crypto is highly volatile; paper-test for at least two weeks before flipping Live mode on for any crypto position.
+            </p>
+        </div>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       TAB 2: NEWS FEEDS — Finnhub, SEC, Insider, Google News, FOMC, Grok trending, Discovery.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div class="tab-panel" data-panel="news" role="tabpanel">
+
+        <div class="card">
+            <h2>📰 News sources</h2>
+            <p class="dim">Pick which signals feed into the bot. More sources = more candidates; doesn't change the bot's selectivity.</p>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseFinnhub" /> <strong>Finnhub per-ticker news</strong></label>
+                <div class="help">Pulls news for every ticker in your universe (Yahoo, Benzinga, SeekingAlpha, etc.) tagged to that symbol. <strong>Free tier handles ~60 req/min</strong>, plenty for 20–30 tickers polled every minute. Recommended: <strong>on</strong>.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.FinnhubLookbackMinutes">Initial lookback window (minutes)</label>
+                <input asp-for="Input.FinnhubLookbackMinutes" type="number" min="15" max="1440" />
+                <div class="help">On startup, how far back to pull news per ticker on the first poll. After that, the bot tracks the latest-seen timestamp per ticker and only pulls newer items. <strong>60</strong> = catch the last hour. Larger values get more historical context but burn extra calls + AI cost on stale articles.</div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0">
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseSecEdgar" /> <strong>SEC EDGAR filings</strong></label>
+                <div class="help">Primary-document feed for material corporate disclosures (8-K, 10-Q, 10-K). Highest-signal source available — these are legally required filings, not interpretations. Free, no auth, but the SEC requires you identify yourself in the User-Agent.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.SecEdgarContactEmail">SEC EDGAR contact email</label>
+                <input asp-for="Input.SecEdgarContactEmail" type="email" />
+                <div class="help">SEC requires every API client to identify with a contact in the User-Agent. Use a real email. Without this, EDGAR returns 403.</div>
+            </div>
+            <div class="field">
+                <label>Form types to ingest</label>
+                <div style="display: flex; gap: 16px; margin-top: 4px">
+                    <label style="font-weight:normal"><input type="checkbox" asp-for="Input.SecEdgarForm8K" /> 8-K (material events)</label>
+                    <label style="font-weight:normal"><input type="checkbox" asp-for="Input.SecEdgarForm10Q" /> 10-Q (quarterly)</label>
+                    <label style="font-weight:normal"><input type="checkbox" asp-for="Input.SecEdgarForm10K" /> 10-K (annual)</label>
+                </div>
+                <div class="help"><strong>8-K is the high-signal one</strong> — companies file these within 4 business days of any material event (acquisition, leadership change, FDA decision, contract win, etc.). 10-Q/10-K earnings reports are usually already priced in by the time they hit EDGAR but worth having as confirmation.</div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0">
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseInsiderTransactions" /> <strong>Insider transactions (SEC Form 4 via Finnhub)</strong></label>
+                <div class="help">When officers / directors / 10%+ owners buy or sell their own company's stock, they must file Form 4 with the SEC within 2 business days. <strong>Open-market insider buys are one of the highest-signal indicators in trading</strong> — execs don't put their own money in unless they think the stock is genuinely cheap. Routine planned sales (10b5-1) are much weaker signal. Free, uses your Finnhub key.</div>
+            </div>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseGoogleNews" /> <strong>Google News RSS per ticker</strong></label>
+                <div class="help">Aggregates from Reuters, MarketWatch, Yahoo Finance, Seeking Alpha, Bloomberg headlines, FT, and dozens more — many of which Finnhub free tier doesn't surface fast. Free, no key needed. Adds redundancy and catches things Finnhub misses.</div>
+            </div>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseFomcMacro" /> <strong>Fed press releases + speeches (macro)</strong></label>
+                <div class="help">Recent Fed press releases, FOMC monetary policy statements, and speeches by Board members get summarized into the <em>macro</em> prompt section alongside Manifold prediction-market odds. Useful for rate-sensitive trades (banks, REITs, long-duration tech). Free. Polled hourly server-wide.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🐦 Grok X-trending discovery</h2>
+            <p class="dim">Periodically asks Grok "what tickers are trending in serious financial discussion right now?" — fresh hot tickers join your dynamic watchlist for a few hours.</p>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.UseGrokTrending" /> Enable Grok X-trending (Plus &amp; Pro)</label>
+                <div class="help">Discovered tickers get auto-added to your dynamic watchlist for 6h. <strong>Platform-shared Grok key</strong> — no separate billing on your end. Noise risk is real: FinTwit has pump-and-dump campaigns; the bot's other gates filter most of them, but not all.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.GrokPollIntervalSeconds">Grok poll interval (seconds)</label>
+                <input asp-for="Input.GrokPollIntervalSeconds" type="number" min="300" max="7200" />
+                <div class="help">How often to refresh the trending list. <strong>1800 = every 30 min</strong> (recommended). Smaller = more responsive but burns more platform credits.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔭 Dynamic discovery</h2>
+            <p class="dim">Separate from your fixed universe — discovery scans the broad market-news feed for tickers being unusually discussed and promotes them onto a dynamic watchlist for a few hours.</p>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.DiscoveryEnabled" /> Enable dynamic discovery</label>
+                <div class="help">When on, the bot reads Finnhub's general market feed every tick, uses your LLM to identify which tickers are being discussed, and promotes the most-mentioned ones onto your trading watchlist. Off = bot only trades your fixed Universe.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.DiscoveryExtractorIntervalSeconds">LLM ticker-extractor interval (seconds)</label>
+                <input asp-for="Input.DiscoveryExtractorIntervalSeconds" type="number" min="120" max="7200" />
+                <div class="help"><strong>The #1 cost knob.</strong> The bot batches ~100 headlines into one LLM call to identify tickers. Cheaper LLMs (Gemini free tier) → tiny cost; pricier ones (Claude) → real $$. Recommended: <strong>300 (5 min)</strong> on Gemini, <strong>1800 (30 min)</strong> on Claude. Higher = lower cost, slower to react to new buzz.</div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.DiscoveryBuzzThreshold">Mentions required to promote</label>
+                    <input asp-for="Input.DiscoveryBuzzThreshold" type="number" min="1" max="20" />
+                    <div class="help">Number of independent mentions a ticker needs (within the buzz window) before it joins your watchlist. Higher = more selective.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.DiscoveryBuzzWindowMinutes">Buzz rolling window (minutes)</label>
+                    <input asp-for="Input.DiscoveryBuzzWindowMinutes" type="number" min="30" max="1440" />
+                    <div class="help">How long mentions stay "current" for promotion. 180 (3h) is a sensible default.</div>
+                </div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.DiscoveryWatchlistTtlHours">Watchlist entry lifetime (hours)</label>
+                <input asp-for="Input.DiscoveryWatchlistTtlHours" type="number" min="1" max="72" />
+                <div class="help">Promoted tickers stay watched for this many hours, then drop off (unless they get re-promoted by fresh buzz, or you hold a position in them — held positions stay scanned regardless).</div>
+            </div>
+        </div>
+
+        @*
+           Verification gates duplicated here because the user thinks of them as news/context sources
+           (they pull fresh web + X data at decision time). The "real" asp-for inputs that actually
+           post live under the Verification & AI tab; the checkboxes below have no `name` attribute
+           and don't post — they're kept in sync by the script at the bottom. Either side is editable;
+           saving from any tab persists the same value.
+        *@
+        <div class="card">
+            <h2>🔍 AI verification gates (per-buy)</h2>
+            <p class="dim">These gates run a live web / X search <em>before each buy</em> and ask the model: "does this trade make sense, given everything you can find online?". They effectively pull fresh news context at decision time — that's why they're surfaced here as well as under the Verification &amp; AI tab. Toggling either copy updates the other.</p>
+
+            <div class="field" style="padding: 12px 14px; background: rgba(248,81,73,0.06); border: 1px solid rgba(248,81,73,0.25); border-radius: 6px">
+                <label><input type="checkbox" class="sync-grok-gate" /> <strong>🐦 Grok 2nd-opinion gate (Plus &amp; Pro)</strong></label>
+                <div class="help">
+                    Before each <strong>actual buy</strong>, asks Grok (with live X + web search) <em>"is there anything contradicting this trade in the last 24h?"</em>. Catches things Finnhub misses (FinTwit-only downgrades, "everyone hates this earnings beat", pump-and-dump campaigns, late-breaking analyst notes).
+                    <br><br>
+                    <strong>Cost:</strong> ~$0.01 per buy attempt that survives all earlier gates. <strong>Latency:</strong> 5–10s per check.
+                </div>
+            </div>
+
+            <div class="field" style="padding: 12px 14px; background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.3); border-radius: 6px; margin-top: 12px">
+                <label><input type="checkbox" class="sync-claude-gate" /> <strong>🧠 Claude verification gate (Pro only)</strong></label>
+                <div class="help">
+                    Before every potential buy, Anthropic's Claude runs a live <strong>web_search</strong> and is asked
+                    <em>"does this trade make sense given everything you can find online?"</em>. Returns approve / caution / veto.
+                    <br><br>
+                    <strong>Cost:</strong> ~$0.01-0.05 per buy attempt that reaches this gate. <strong>Latency:</strong> 10-15s.
+                    <br>
+                    <strong>Stack with Grok:</strong> if both are enabled, the bot requires BOTH to approve — two uncorrelated AI signals = fewer false positives.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       TAB 3: VERIFICATION & AI — LLM model, macro, entry gates, Grok/Claude verification.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div class="tab-panel" data-panel="verify" role="tabpanel">
+
+        <div class="card">
+            <h2>🤖 AI model</h2>
+            <p class="dim">Which model judges every news article and the per-tick discovery batch.</p>
+
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.LlmProvider">Provider</label>
+                    <select asp-for="Input.LlmProvider">
+                        <option value="Gemini">Google Gemini Flash — balanced (~$0.075/M in, has financial-content safety filter)</option>
+                        <option value="Llama">Groq · Llama 3.1 8B — cheapest + fastest (~$0.05/M in, no content filter)</option>
+                        <option value="Anthropic">Anthropic Claude Haiku — most accurate, expensive (~$1.00/M in)</option>
+                    </select>
+                    <div class="help">
+                        <strong>Llama on Groq</strong> is the cheapest option and doesn't refuse crypto/financial headlines the way Gemini sometimes does. Quality ~85–90% of Gemini Flash for classification — the bot's other 4 gates absorb the small accuracy gap.
+                        <br><strong>Switching providers requires a bot restart</strong> (we set up the HTTP client once at start).
+                    </div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.GeminiModel">Gemini model</label>
+                    <input asp-for="Input.GeminiModel" />
+                    <div class="help">Default <code>gemini-2.5-flash</code>. Other valid values: <code>gemini-2.5-flash-lite</code> (cheaper), <code>gemini-2.5-pro</code> (smarter, much more expensive).</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.LlamaModel">Groq model identifier</label>
+                    <input asp-for="Input.LlamaModel" />
+                    <div class="help">
+                        Default <code>meta-llama/llama-4-scout-17b-16e-instruct</code> — non-reasoning MoE model that returns answers directly. Safe choice for headline classification.
+                        <br><strong>Avoid reasoning models for this role:</strong> <code>openai/gpt-oss-20b</code> and <code>openai/gpt-oss-120b</code> spend most of their token budget on internal thinking; they work but need 1000+ <code>max_tokens</code> (we set that, but they're 3-5× slower per call).
+                        <br>Other safe options: <code>llama-3.3-70b-versatile</code> (smarter but 10× cost), <code>qwen/qwen3-32b</code> (reasoning).
+                    </div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.AnthropicModel">Anthropic model</label>
+                    <input asp-for="Input.AnthropicModel" />
+                    <div class="help">Default <code>claude-haiku-4-5</code>. For higher-quality calls use <code>claude-sonnet-4-6</code> at ~10× the cost.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🌐 Macro context</h2>
+            <p class="dim">Prediction-market odds (Fed rate cuts, recession, geopolitical tail risks, BTC price targets, etc.) injected into every AI call so the model can weight a headline against the macro state.</p>
+
+            <div class="field">
+                <label asp-for="Input.MacroSource">Source</label>
+                <select asp-for="Input.MacroSource">
+                    <option value="Off">Off — don't fetch macro context</option>
+                    <option value="Manifold">Manifold Markets (free, play-money — noisier but works globally)</option>
+                    <option value="Polymarket">Polymarket (free API, geoblocked in many countries including Australia, US)</option>
+                </select>
+                <div class="help"><strong>Manifold recommended</strong> if you're outside US/UK/AU. Polymarket has real-money markets (higher quality signal) but is geo-restricted — connection times out from blocked countries. Off = AI calls don't include macro preamble (slightly cheaper, slightly less context-aware).</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.MacroPollIntervalSeconds">Macro refresh interval (seconds)</label>
+                <input asp-for="Input.MacroPollIntervalSeconds" type="number" min="120" max="7200" />
+                <div class="help">How often to refresh the macro snapshot. 600 (10 min) is plenty — macro odds don't move on second-by-second timescales.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>✋ Entry gates</h2>
+            <p class="dim">Every buy must pass all of these. Tightening them means fewer trades but higher-quality entries.</p>
+
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.MinConfidence">Minimum confidence (0.50–0.99)</label>
+                    <input asp-for="Input.MinConfidence" type="number" step="0.01" min="0.5" max="0.99" />
+                    <div class="help">The AI's confidence in its sentiment call must be at least this. <strong>0.80</strong> is conservative; 0.70 = more trades, more noise; 0.90+ = almost nothing trades.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.RequiredSignalCount">Confirmation signals required</label>
+                    <input asp-for="Input.RequiredSignalCount" type="number" min="1" max="5" />
+                    <div class="help">The bot waits until it sees this many <em>same-direction</em> actionable signals on a ticker within the confirmation window. <strong>1</strong> = trade on a single article (faster, noisier). <strong>2</strong> = wait for confirmation (recommended — kills one-off shoddy headlines).</div>
+                </div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.ConfirmationWindowMinutes">Confirmation window (minutes)</label>
+                <input asp-for="Input.ConfirmationWindowMinutes" type="number" min="15" max="1440" />
+                <div class="help">Window during which prior actionable signals count toward confirmation. 120 (2h) gives time for a story to spread through multiple sources.</div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0">
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.EarningsBlackoutEnabled" /> Enforce earnings blackout</label>
+                <div class="help">Before a buy fires, the bot checks the upcoming earnings calendar for that ticker. If earnings is within the blackout window, the buy is rejected. <strong>The #1 way news bots blow up is buying a stock the day before its earnings report</strong> — it gaps 10% on the print and your stop-loss can't help.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.EarningsBlackoutHours">Earnings blackout window (± hours)</label>
+                <input asp-for="Input.EarningsBlackoutHours" type="number" min="0" max="168" />
+                <div class="help">No new buys this many hours before or after scheduled earnings. <strong>24</strong> = "don't buy the day of or day before earnings." 48 = wider buffer. Set 0 to disable.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔍 AI verification gates (per-buy)</h2>
+            <p class="dim">Run one or both of these <em>before every buy</em>. The trade only fires if every enabled gate returns approve. Conservative by design — caution / veto / errors all skip the trade.</p>
+
+            <div class="field" style="padding: 12px 14px; background: rgba(248,81,73,0.06); border: 1px solid rgba(248,81,73,0.25); border-radius: 6px">
+                @* This is the SOURCE OF TRUTH for the Grok 2nd-opinion toggle — has asp-for so it
+                   posts. The mirror copy on the News feeds tab uses class="sync-grok-gate" too,
+                   no asp-for, and gets kept in sync by JS. *@
+                <label><input type="checkbox" asp-for="Input.GrokConfirmationEnabled" class="sync-grok-gate" /> <strong>🐦 Grok 2nd-opinion gate (Plus &amp; Pro)</strong></label>
+                <div class="help">
+                    Before each <strong>actual buy</strong>, asks Grok (with live X + web search) <em>"is there anything contradicting this trade in the last 24h?"</em>. Catches things Finnhub misses (FinTwit-only downgrades, "everyone hates this earnings beat", pump-and-dump campaigns, late-breaking analyst notes).
+                    <br><br>
+                    <strong>Cost:</strong> ~$0.01 per buy attempt that survives all earlier gates. With default settings you'd see ≤15 buy attempts/day → $0.15/day. <strong>Latency:</strong> 5–10s per check.
+                </div>
+            </div>
+
+            <div class="field" style="padding: 12px 14px; background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.3); border-radius: 6px; margin-top: 12px">
+                @* Source of truth for Claude verification toggle — see note above. *@
+                <label><input type="checkbox" asp-for="Input.ClaudeConfirmationEnabled" class="sync-claude-gate" /> <strong>🧠 Claude verification gate (Pro only)</strong></label>
+                <div class="help">
+                    Before every potential buy, Anthropic's Claude runs a live <strong>web_search</strong> and is asked
+                    <em>"does this trade make sense given everything you can find online?"</em>. Returns approve / caution / veto.
+                    <br><br>
+                    <strong>Cost:</strong> ~$0.01-0.05 per buy attempt that reaches this gate. <strong>Latency:</strong> 10-15s.
+                    <br>
+                    <strong>Stack with Grok:</strong> if both are enabled, the bot requires BOTH to approve — two uncorrelated AI signals = fewer false positives.
+                </div>
+            </div>
+
+            <div class="field" style="padding: 12px 14px; background: rgba(247,176,76,0.06); border: 1px solid rgba(247,176,76,0.3); border-radius: 6px; margin-top: 12px">
+                <label><input type="checkbox" asp-for="Input.ClaudeAdvisorMode" /> <strong>🔬 Claude advisor mode (experimental)</strong></label>
+                <div class="help">
+                    When ON, Claude still runs and its verdict is logged in the gate-calls audit — but a <strong>Veto/Caution no longer blocks the trade</strong>. The bot proceeds with the buy and the order's reason includes <code>[Claude shadow Veto: …]</code> so you can later compute "how much P&amp;L would Claude have saved or cost me?"
+                    <br><br>
+                    <strong>Use this</strong> to gather 30+ real trades worth of data and judge whether Claude is actually adding alpha or just blocking opportunity.
+                    <br>
+                    <strong>Risk:</strong> the bot will execute trades Claude flagged as risky. Paper trading only — do NOT enable in live mode.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       TAB 4: PERSONAL RULES — blacklist, keyword filters, time windows, min hold.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div class="tab-panel" data-panel="rules" role="tabpanel">
+
+        <div class="card">
+            <h2>🎯 Personal trading rules</h2>
+            <p class="dim">Every user runs the same underlying bot, but these rules let you make yours behave differently. Use them to express your own preferences and risk tolerance.</p>
+
+            <div class="field">
+                <label asp-for="Input.BlacklistedTickersCsv">Tickers to NEVER trade</label>
+                <input asp-for="Input.BlacklistedTickersCsv" placeholder="e.g. TSLA, MULN, BBBY" />
+                <div class="help">Comma-separated list. Even if a ticker is in your universe or gets discovered through buzz, the bot will skip it entirely. Useful for stocks you don't trust or have personal reasons to avoid.</div>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.BlockedKeywordsCsv">Block trades on headlines containing</label>
+                <input asp-for="Input.BlockedKeywordsCsv" placeholder="e.g. lawsuit, investigation, fraud, recall, downgrade, SEC probe" />
+                <div class="help">If a headline contains any of these phrases (case-insensitive), the bot rejects the trade before even asking the AI. Stops you trading on bad-news-spike fakeouts.</div>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.BoostKeywordsCsv">Boost confidence on headlines containing</label>
+                <input asp-for="Input.BoostKeywordsCsv" placeholder="e.g. FDA approval, earnings beat, upgrade, contract win, buyback" />
+                <div class="help">Headlines containing these phrases get a 5% confidence bonus from the AI verdict. Useful if you've noticed certain catalyst types work better for your style.</div>
+            </div>
+
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.NoTradeMinutesAfterOpen">Skip first N minutes after open</label>
+                    <input asp-for="Input.NoTradeMinutesAfterOpen" type="number" min="0" max="120" />
+                    <div class="help">Don't open new positions in the first N minutes of the trading day. The opening auction is volatile and your bot can get whipsawed. <strong>15</strong> is a common choice. <strong>0</strong> = trade at open.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.NoTradeMinutesBeforeClose">Skip last N minutes before close</label>
+                    <input asp-for="Input.NoTradeMinutesBeforeClose" type="number" min="0" max="120" />
+                    <div class="help">Don't open new positions in the last N minutes of the day. Avoids buying something you can't exit before close. <strong>30</strong> means no new buys after 3:30pm ET. <strong>0</strong> = trade right up to the bell.</div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.MinHoldMinutes">Minimum hold time (minutes)</label>
+                <input asp-for="Input.MinHoldMinutes" type="number" min="0" max="1440" />
+                <div class="help">Prevents the bot from exiting a position within N minutes of opening it. Kills the "buy then immediately stop out on a 1% wobble" pattern. <strong>15</strong> is a good starting point — long enough to ride out noise, short enough to let real losers exit. Set 0 to let exits fire immediately.</div>
+            </div>
+        </div>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       TAB 5: RISK & EXITS — sizing caps, stop losses, trailing, take profit, time, bearish news.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div class="tab-panel" data-panel="risk" role="tabpanel">
+
+        <div class="card">
+            <h2>📐 Position sizing &amp; risk caps</h2>
+            <p class="dim">The bot will never violate any of these, no matter how confident the AI is.</p>
+
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.MaxPositionFraction">Max position size (fraction of equity)</label>
+                    <input asp-for="Input.MaxPositionFraction" type="number" step="0.005" min="0.005" max="0.5" />
+                    <div class="help">Hard cap per ticker. <strong>0.025 = 2.5% of equity</strong>. On a $100k account that's $2,500 max per position. Smaller = more diversification, less concentration risk. For paper trading, 0.025–0.05 is normal.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.MaxDailyLossFraction">Daily loss kill switch (fraction of equity)</label>
+                    <input asp-for="Input.MaxDailyLossFraction" type="number" step="0.005" min="0.005" max="0.10" />
+                    <div class="help">If your equity drops by this much in a single day vs. session-open, all new trades stop for the rest of the day. <strong>0.02 = 2%</strong>. Existing positions still exit on their own triggers.</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.MaxTradesPerDay">Max trades per day</label>
+                    <input asp-for="Input.MaxTradesPerDay" type="number" min="1" max="100" />
+                    <div class="help">Hard ceiling on new orders submitted per calendar day (UTC). Includes both buys and exits. <strong>15</strong> is a reasonable starting point for a 20-ticker universe.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.PollIntervalSeconds">Main poll interval (seconds)</label>
+                    <input asp-for="Input.PollIntervalSeconds" type="number" min="15" max="3600" />
+                    <div class="help">How often the main loop ticks. <strong>60</strong> = check news + positions every minute. 30 = more responsive but ~2× the API calls. Below 15 won't help (minimum enforced).</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🛑 Stop loss</h2>
+            <p class="dim">First line of defence when a trade goes against you. Pick a style and the percentages below.</p>
+
+            <div class="field">
+                <label asp-for="Input.StopLossType">Stop loss style</label>
+                <select asp-for="Input.StopLossType">
+                    <option value="None">None — no stop at all (dangerous)</option>
+                    <option value="Hard">Hard — fixed % from entry</option>
+                    <option value="Trailing">Trailing only — based on peak since open</option>
+                    <option value="Both">Both — whichever triggers first wins (recommended)</option>
+                </select>
+                <div class="help">
+                    <strong>Hard</strong>: simple safety net — if position drops X% from entry, sell. Always at the same price relative to entry.<br />
+                    <strong>Trailing</strong>: tracks the highest price seen since open, sells when current price falls X% below that peak. Lets winners run, captures more upside on bouncy moves.<br />
+                    <strong>Both</strong> (recommended): hard stop protects against initial fade, trailing locks in profits as the position runs.
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.StopLossPercent">Hard stop %</label>
+                    <input asp-for="Input.StopLossPercent" type="number" step="0.005" min="0" max="0.30" />
+                    <div class="help">Used by Hard / Both. <strong>0.05 = sell if position drops 5% from entry</strong>. Tighter (0.03) cuts losers faster but whipsaws on normal volatility. Looser (0.08) gives more room but bigger losses when wrong. 0 = disabled.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.StopArmDelayMinutes">Arm delay (minutes after open)</label>
+                    <input asp-for="Input.StopArmDelayMinutes" type="number" min="0" max="240" />
+                    <div class="help"><strong>Stops are suppressed for this long after market open.</strong> The first 30 min of trading is the most volatile — gap-spike-recovery patterns can stop you out for no reason. <strong>30</strong> is a sensible default. Set 0 to arm stops immediately.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Trailing stop</h2>
+            <p class="dim">Tracks the position's peak and sells when price falls back by this much. Lets winners run.</p>
+
+            <div class="row">
+                <div class="field">
+                    <label asp-for="Input.TrailingStopPercent">Trail distance %</label>
+                    <input asp-for="Input.TrailingStopPercent" type="number" step="0.005" min="0" max="0.10" />
+                    <div class="help">Used by Trailing / Both. Sells when price drops this % below the highest price seen since the position opened. <strong>0.015 = 1.5%</strong> (tight, banks gains fast). 0.03 = looser, lets winners breathe but gives back more on reversals. 0 = disabled.</div>
+                </div>
+                <div class="field">
+                    <label asp-for="Input.TrailingStopActivationPercent">Trail activation threshold</label>
+                    <input asp-for="Input.TrailingStopActivationPercent" type="number" step="0.005" min="0" max="0.10" />
+                    <div class="help">The trail only arms once the position is up by this % from entry. <strong>0.03 = trail engages once you're +3% in profit</strong>. Below this, only the hard stop / time exit protect you. Prevents normal early-trade noise from killing winners before they develop.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎯 Take profit &amp; time exit</h2>
+            <p class="dim">Optional caps for closing a position regardless of price action.</p>
+
+            <div class="field">
+                <label asp-for="Input.TakeProfitPercent">Hard take-profit %</label>
+                <input asp-for="Input.TakeProfitPercent" type="number" step="0.005" min="0" max="0.50" />
+                <div class="help">Fires a sell once position is up this much, regardless of trail. <strong>Set 0 to disable</strong> (recommended when trailing stop is on — trailing handles profit-taking better). Set e.g. 0.20 for a +20% ceiling backstop on top of the trail.</div>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.MaxHoldDays">Sell after holding (days)</label>
+                <input asp-for="Input.MaxHoldDays" type="number" min="0" max="60" />
+                <div class="help">Closes any position older than this regardless of P&amp;L. Prevents stale bags (a position that's not moving anywhere consumes capital). <strong>5</strong> matches the typical news-catalyst horizon. Set 0 to disable time exits.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📰 Bearish news exit</h2>
+            <p class="dim">Optional: let the AI close a held position when it spots fresh bearish news, instead of waiting for the price-based stop.</p>
+
+            <div class="field">
+                <label><input type="checkbox" asp-for="Input.BearishNewsExitsEnabled" /> Allow bearish news to trigger a sell</label>
+                <div class="help">If on, the AI flagging a held position as bearish-actionable with sufficient confidence will close the entire position. This catches catalysts (downgrade, bad earnings rumor, regulatory action) before they hit the stop-loss. Off = position only exits on price/time triggers.</div>
+            </div>
+            <div class="field">
+                <label asp-for="Input.BearishNewsMinConfidence">Bearish news minimum confidence</label>
+                <input asp-for="Input.BearishNewsMinConfidence" type="number" step="0.01" min="0.5" max="0.99" />
+                <div class="help">The AI's bearish confidence must clear this for the bot to sell. Often set slightly lower than buy confidence — protecting capital is more important than perfect timing. <strong>0.75</strong> is common.</div>
+            </div>
+        </div>
+    </div>
+
+    @* ────────────────────────────────────────────────────────────────────────
+       SAVE / CANCEL — always visible at the bottom of every tab.
+       ──────────────────────────────────────────────────────────────────────── *@
+    <div style="display: flex; gap: 12px; margin-top: 8px; position: sticky; bottom: 0; padding: 16px 0; background: var(--bg); border-top: 1px solid var(--border)">
+        <button type="submit">Save all settings</button>
+        <a asp-page="/Dashboard" class="btn muted">Cancel</a>
+        <span class="dim" style="font-size: 12px; align-self: center; margin-left: 8px">
+            One Save updates every tab.
+        </span>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    // Tab switcher for Settings. URL hash (#news, #verify, ...) drives the active tab so reloading
+    // after Save (which round-trips via TempData["Flash"] + RedirectToPage) lands on the same tab.
+    // localStorage falls back when no hash is present.
+    (function() {
+        var tabs = document.querySelectorAll('.tabs .tab');
+        var panels = document.querySelectorAll('.tab-panel');
+        var activeInput = document.getElementById('settings-active-tab');
+        var form = document.getElementById('settings-form');
+        if (!tabs.length) return;
+
+        var validTabs = Array.prototype.map.call(tabs, function(t) { return t.dataset.tab; });
+        var STORAGE_KEY = 'owlnest.settings.activeTab';
+        var current = validTabs[0];
+
+        function activate(name) {
+            if (validTabs.indexOf(name) < 0) name = validTabs[0];
+            current = name;
+            tabs.forEach(function(t) {
+                var on = t.dataset.tab === name;
+                t.classList.toggle('active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            panels.forEach(function(p) {
+                p.classList.toggle('active', p.dataset.panel === name);
+            });
+            if (activeInput) activeInput.value = name;
+            try { localStorage.setItem(STORAGE_KEY, name); } catch (_) {}
+        }
+
+        // Click handler
+        tabs.forEach(function(t) {
+            t.addEventListener('click', function() {
+                history.replaceState(null, '', '#' + t.dataset.tab);
+                activate(t.dataset.tab);
+            });
+        });
+
+        // Form submit: stuff current tab into the hidden field so the server can echo it back
+        // in the redirect URL hash. The browser strips hashes from the POST URL, so we use a
+        // form field instead.
+        if (form && activeInput) {
+            form.addEventListener('submit', function() { activeInput.value = current; });
+        }
+
+        // Initial activation: URL hash > localStorage > first tab
+        var initial = (location.hash || '').replace('#', '');
+        if (!initial) {
+            try { initial = localStorage.getItem(STORAGE_KEY) || ''; } catch (_) {}
+        }
+        activate(initial || validTabs[0]);
+    })();
+
+    // Mirror the AI verification gates between News feeds and Verification & AI tabs.
+    // The asp-for checkbox (with a `name`) is the source of truth and actually posts;
+    // the duplicate (no `name`) is purely UI. We initialize the duplicate from the source,
+    // then keep both in sync on either change event.
+    (function() {
+        function setupSync(cls) {
+            var cbs = Array.prototype.slice.call(document.querySelectorAll('input.' + cls));
+            if (cbs.length < 2) return;
+            // Pick the one with a `name` as source of truth (the asp-for one).
+            var source = cbs.find(function(cb) { return !!cb.name; }) || cbs[0];
+            // Initialize duplicates from the source.
+            cbs.forEach(function(cb) { if (cb !== source) cb.checked = source.checked; });
+            // Two-way sync on change.
+            cbs.forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    cbs.forEach(function(other) {
+                        if (other !== cb) other.checked = cb.checked;
+                    });
+                });
+            });
+        }
+        setupSync('sync-grok-gate');
+        setupSync('sync-claude-gate');
+    })();
+</script>
+}

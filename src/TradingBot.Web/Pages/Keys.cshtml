@@ -1,0 +1,108 @@
+@page
+@model TradingBot.Web.Pages.KeysModel
+@{
+    ViewData["Title"] = "API keys";
+}
+
+<h1>Your API keys</h1>
+<p class="dim">We only need <strong>one</strong> set of keys from you: your Alpaca account.
+Everything else (news, AI, discovery) is provided by the platform.</p>
+
+@if (Model.CurrentlyLive)
+{
+    <div class="card" style="border-color: var(--bear); background: rgba(248,81,73,0.08); margin-bottom: 16px">
+        <h2 style="margin-top:0; color: var(--bear)">⚠️ Your account is in LIVE mode</h2>
+        <p style="margin:0">Real money will be used the next time you start your bot. Switch back to Paper below if this was a mistake.</p>
+    </div>
+}
+
+<form method="post" class="card">
+    <h3>🅰️ Alpaca account</h3>
+    <p class="dim" style="font-size:13px;margin-bottom:14px">
+        Sign up at <a href="https://alpaca.markets/" target="_blank" rel="noopener">alpaca.markets</a>.
+        For paper mode, switch to "Paper Trading" in their dashboard and generate keys there.
+        For live mode, use your live trading API keys.
+    </p>
+
+    <div asp-validation-summary="All" class="errors"></div>
+
+    <div class="row">
+        <div class="field">
+            <label asp-for="Input.AlpacaKeyId">Alpaca Key ID</label>
+            <input asp-for="Input.AlpacaKeyId" placeholder="@Model.Masks.AlpacaKeyId" />
+        </div>
+        <div class="field">
+            <label asp-for="Input.AlpacaSecretKey">Alpaca Secret</label>
+            <input asp-for="Input.AlpacaSecretKey" type="password" placeholder="@Model.Masks.AlpacaSecretKey" />
+        </div>
+    </div>
+
+    <h3 style="margin-top: 24px">Trading mode</h3>
+
+    <div class="field">
+        <label style="font-weight: normal; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; display: block; margin-bottom: 8px">
+            <input type="radio" asp-for="Input.Mode" value="Paper" style="margin-right: 8px" />
+            <strong>🧪 Paper trading</strong>
+            <span class="dim" style="margin-left: 8px; font-size: 13px">(recommended)</span>
+            <div class="help" style="margin-left: 24px; margin-top: 6px">Simulated money. Real market data, real fills, but you can't lose actual dollars. Pick this unless you know exactly what you're doing.</div>
+        </label>
+
+        <label style="font-weight: normal; cursor: pointer; padding: 10px 14px; border: 1px solid rgba(248,81,73,0.4); border-radius: 6px; display: block; background: rgba(248,81,73,0.04)">
+            <input type="radio" asp-for="Input.Mode" value="Live" style="margin-right: 8px" id="mode-live" />
+            <strong style="color: var(--bear)">🔥 Live trading</strong>
+            <span class="dim" style="margin-left: 8px; font-size: 13px">(real money)</span>
+            <div class="help" style="margin-left: 24px; margin-top: 6px">
+                The bot places real orders against your Alpaca live brokerage account.
+                <strong style="color: var(--bear)">You can lose real money.</strong>
+                Read the <a asp-page="/Terms" target="_blank">Risk Disclosure</a> in full before enabling this.
+            </div>
+        </label>
+    </div>
+
+    <div id="live-fields" style="display: none; padding: 16px; background: rgba(248,81,73,0.06); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; margin-top: 12px">
+        <div class="field">
+            <label style="font-weight: normal; color: var(--text); font-size: 13px; line-height: 1.5">
+                <input type="checkbox" asp-for="Input.AcknowledgeLiveRisk" style="margin-right: 8px; vertical-align: middle" />
+                I understand that with Live mode enabled, the bot can lose real money in my Alpaca account.
+                I have read the <a asp-page="/Terms" target="_blank">Risk Disclosure</a> and I accept full responsibility for any losses.
+                Owlnest and its operators are not liable.
+            </label>
+        </div>
+        <div class="field" style="margin-top: 14px">
+            <label asp-for="Input.LiveConfirmation" style="color: var(--bear); font-weight: 600">Type LIVE (uppercase) to confirm</label>
+            <input asp-for="Input.LiveConfirmation" placeholder="LIVE" maxlength="10" style="max-width: 200px; font-family: ui-monospace, 'SF Mono', monospace; letter-spacing: 4px; text-align: center" />
+        </div>
+    </div>
+
+    <button type="submit" style="margin-top: 18px">Save</button>
+</form>
+
+<div class="card" style="opacity:0.85">
+    <h3>🔧 Platform-provided APIs (no action needed)</h3>
+    <p class="dim" style="font-size:13px;margin-bottom:12px">
+        These are paid for by owlnest and shared across all users. Your tier
+        (set on the <a asp-page="/Settings">Settings page</a>) determines how much of each you get.
+    </p>
+    <table>
+        <thead><tr><th>API</th><th>Used for</th><th>Available on</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Finnhub</strong></td><td>Company news, insider trades, earnings calendar</td><td>All tiers</td></tr>
+            <tr><td><strong>Google Gemini</strong></td><td>Sentiment analysis, ticker extraction</td><td>All tiers</td></tr>
+            <tr><td><strong>xAI Grok</strong></td><td>X/Twitter trending, second-opinion gate</td><td>Plus + Pro</td></tr>
+            <tr><td><strong>SEC EDGAR</strong></td><td>Corporate filings (8-K, 10-Q, 10-K, Form 4)</td><td>All tiers</td></tr>
+            <tr><td><strong>Google News RSS</strong></td><td>Aggregated headlines (Reuters, MarketWatch, etc.)</td><td>All tiers</td></tr>
+            <tr><td><strong>Reddit</strong></td><td>r/wallstreetbets, r/stocks, r/investing</td><td>Plus + Pro</td></tr>
+            <tr><td><strong>Manifold + Fed RSS</strong></td><td>Macro prompt context (prediction markets + Fed events)</td><td>All tiers</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Show/hide the live-mode friction fields depending on which radio is picked.
+    function syncLiveFields() {
+        const live = document.getElementById('mode-live').checked;
+        document.getElementById('live-fields').style.display = live ? 'block' : 'none';
+    }
+    document.querySelectorAll('input[name="Input.Mode"]').forEach(r => r.addEventListener('change', syncLiveFields));
+    syncLiveFields();
+</script>

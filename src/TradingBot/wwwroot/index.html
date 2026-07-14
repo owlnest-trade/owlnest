@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradingBot Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --bull: #3fb950;
+      --bear: #f85149;
+      --neutral: #8b949e;
+      --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .pill.ok { background: rgba(63,185,80,0.15); color: var(--bull); }
+    .pill.warn { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .pill.bad { background: rgba(248,81,73,0.15); color: var(--bear); }
+    .pill.info { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .pill.muted { background: rgba(139,148,158,0.15); color: var(--muted); }
+
+    main {
+      padding: 16px 24px 64px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (min-width: 1100px) {
+      main { grid-template-columns: 360px 1fr; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+    }
+
+    .left-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .kv > div:nth-child(odd) { color: var(--muted); }
+    .kv > div:nth-child(even) { text-align: right; }
+    .num-big { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .num-pos { color: var(--bull); }
+    .num-neg { color: var(--bear); }
+
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td.num { text-align: right; }
+    tr:last-child td { border-bottom: none; }
+
+    .feed { max-height: 80vh; overflow-y: auto; }
+    .feed-item {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+    .feed-ticker { font-weight: 600; color: var(--accent); }
+    .feed-time { color: var(--muted); font-size: 12px; }
+    .feed-source { color: var(--muted); font-size: 12px; }
+    .feed-head a { color: var(--text); text-decoration: none; }
+    .feed-head a:hover { text-decoration: underline; }
+    .feed-headline { font-weight: 500; }
+    .feed-reasoning { color: var(--muted); margin-top: 4px; font-style: italic; font-size: 13px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge.bull { background: rgba(63,185,80,0.15); color: var(--bull); }
+    .badge.bear { background: rgba(248,81,73,0.15); color: var(--bear); }
+    .badge.neutral { background: rgba(139,148,158,0.15); color: var(--neutral); }
+    .badge.actionable { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .badge.outcome-NoTradeGate { background: rgba(139,148,158,0.15); color: var(--muted); }
+    .badge.outcome-Rejected { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .badge.outcome-Approved { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .badge.outcome-Submitted { background: rgba(63,185,80,0.15); color: var(--bull); }
+    .badge.outcome-SentimentSkipped { background: rgba(139,148,158,0.10); color: var(--muted); }
+
+    /* Order-status badges */
+    .badge.status-filled           { background: rgba(63,185,80,0.18); color: var(--bull); }
+    .badge.status-partially_filled { background: rgba(63,185,80,0.12); color: var(--bull); }
+    .badge.status-new,
+    .badge.status-accepted,
+    .badge.status-pending_new,
+    .badge.status-held             { background: rgba(210,153,34,0.18); color: var(--warn); }
+    .badge.status-canceled,
+    .badge.status-cancelled,
+    .badge.status-expired,
+    .badge.status-replaced         { background: rgba(139,148,158,0.18); color: var(--muted); }
+    .badge.status-rejected,
+    .badge.status-suspended        { background: rgba(248,81,73,0.18); color: var(--bear); }
+
+    .empty {
+      padding: 32px 0;
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-row select, .filter-row input {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font: inherit;
+    }
+    .filter-row label { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TradingBot</h1>
+    <span id="pill-mode" class="pill muted">…</span>
+    <span id="pill-trading" class="pill muted">…</span>
+    <span id="pill-market" class="pill muted">…</span>
+    <span id="pill-tick" class="pill muted">…</span>
+    <span style="margin-left:auto;color:var(--muted);font-size:12px" id="updated-at">never</span>
+  </header>
+
+  <main>
+    <div class="left-col">
+
+      <section class="card">
+        <h2>Account</h2>
+        <div class="num-big" id="equity">—</div>
+        <div id="day-pnl" style="margin-top:2px;font-size:13px;color:var(--muted)">day P&amp;L: —</div>
+        <div class="kv" style="margin-top:12px">
+          <div>Cash</div><div id="cash">—</div>
+          <div>Buying power</div><div id="bp">—</div>
+          <div>Session open</div><div id="open-eq">—</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Risk today</h2>
+        <div class="kv">
+          <div>Trades today</div><div id="trades-today">— / —</div>
+          <div>Min confidence</div><div id="min-conf">—</div>
+          <div>Max position</div><div id="max-pos">—</div>
+          <div>Max daily loss</div><div id="max-loss">—</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Universe</h2>
+        <div id="universe" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div class="kv" style="margin-top:12px">
+          <div>Model</div><div id="model">—</div>
+          <div>Poll interval</div><div id="poll-int">—</div>
+          <div>Regular hours only</div><div id="rho">—</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Dynamic watchlist</h2>
+        <div id="wl-summary" style="color:var(--muted);font-size:12px;margin-bottom:8px">—</div>
+        <div id="wl-entries" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="margin-top:12px">
+          <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Top buzz (rolling window)</div>
+          <div id="wl-buzz" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Grok trending (X)</h2>
+        <div id="trending-summary" style="color:var(--muted);font-size:12px;margin-bottom:8px">—</div>
+        <div id="trending-entries" style="display:flex;flex-direction:column;gap:6px"></div>
+      </section>
+
+      <section class="card">
+        <h2>Positions</h2>
+        <table id="positions-tbl">
+          <thead><tr><th>Ticker</th><th class="num">Qty</th><th class="num">Avg</th><th class="num">Value</th><th class="num">P&amp;L</th></tr></thead>
+          <tbody><tr><td colspan="5" class="empty">No open positions</td></tr></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Exits</h2>
+        <div id="exits-summary" style="color:var(--muted);font-size:12px;margin-bottom:8px">—</div>
+        <table id="exits-tbl">
+          <thead><tr><th>Ticker</th><th class="num">P&amp;L</th><th class="num">Peak</th><th class="num">Δ peak</th><th class="num">Δ stop</th><th class="num">Held</th></tr></thead>
+          <tbody><tr><td colspan="6" class="empty">No positions</td></tr></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Orders</h2>
+        <div id="orders-summary" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+        <table id="orders-tbl">
+          <thead><tr><th>Time</th><th>Side</th><th>Ticker</th><th class="num">Qty</th><th>Status</th></tr></thead>
+          <tbody><tr><td colspan="5" class="empty">No orders yet</td></tr></tbody>
+        </table>
+      </section>
+
+    </div>
+
+    <section class="card">
+      <h2>Decisions</h2>
+      <div class="filter-row">
+        <label>Ticker</label>
+        <select id="f-ticker"><option value="">All</option></select>
+        <label>Outcome</label>
+        <select id="f-outcome">
+          <option value="">All</option>
+          <option value="Submitted">Submitted</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+          <option value="NoTradeGate">No-trade gate</option>
+          <option value="SentimentSkipped">Sentiment skipped</option>
+        </select>
+        <label>Source</label>
+        <select id="f-source">
+          <option value="">All</option>
+          <option value="SEC EDGAR">SEC EDGAR</option>
+          <option value="Finnhub">Finnhub (any)</option>
+        </select>
+        <span style="margin-left:auto;color:var(--muted);font-size:12px" id="decisions-count">0</span>
+      </div>
+      <div class="feed" id="feed">
+        <div class="empty">Waiting for the first decision…</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const fmt = {
+      money: n => n == null ? '—' : '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      pct:   n => n == null ? '—' : (Number(n) * 100).toFixed(2) + '%',
+      pct0:  n => n == null ? '—' : (Number(n) * 100).toFixed(0) + '%',
+      time:  iso => {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      },
+      ago: iso => {
+        if (!iso) return 'never';
+        const sec = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+        if (sec < 60) return sec + 's ago';
+        if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+        return Math.floor(sec / 3600) + 'h ago';
+      }
+    };
+
+    const $ = id => document.getElementById(id);
+    const setPill = (el, txt, cls) => { el.textContent = txt; el.className = 'pill ' + cls; };
+
+    async function get(url) {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch { return null; }
+    }
+
+    function badge(text, cls) { return `<span class="badge ${cls}">${text}</span>`; }
+    function sentimentBadge(s) {
+      if (!s) return badge('skipped', 'neutral');
+      const map = { Bullish: 'bull', Bearish: 'bear', Neutral: 'neutral' };
+      return badge(s, map[s] || 'neutral');
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    let allDecisions = [];
+    const filters = { ticker: '', outcome: '', source: '' };
+
+    async function refreshStatus() {
+      const s = await get('/api/status');
+      if (!s) return;
+
+      setPill($('pill-mode'), s.paperMode ? 'Paper' : 'LIVE', s.paperMode ? 'info' : 'bad');
+      setPill($('pill-trading'), 'Trading: ' + (s.tradingEnabled ? 'on' : 'off'), s.tradingEnabled ? 'ok' : 'muted');
+      setPill($('pill-market'), 'Market ' + (s.marketOpen ? 'open' : 'closed'), s.marketOpen ? 'ok' : 'muted');
+      setPill($('pill-tick'), 'Last tick: ' + fmt.ago(s.lastTickUtc), 'muted');
+
+      $('min-conf').textContent = fmt.pct0(s.minConfidence);
+      $('max-pos').textContent = fmt.pct(s.maxPositionFraction);
+      $('max-loss').textContent = fmt.pct(s.maxDailyLossFraction);
+      $('trades-today').textContent = `${s.tradesToday} / ${s.maxTradesPerDay}`;
+      $('model').textContent = s.model;
+      $('poll-int').textContent = s.pollIntervalSeconds + 's';
+      $('rho').textContent = s.regularHoursOnly ? 'yes' : 'no';
+
+      const uniHtml = (s.universe || []).map(t => `<span class="badge actionable">${escapeHtml(t)}</span>`).join('');
+      $('universe').innerHTML = uniHtml || '<em style="color:var(--muted)">empty</em>';
+
+      // Build ticker filter from universe
+      const sel = $('f-ticker');
+      const existing = new Set([...sel.options].map(o => o.value));
+      for (const t of (s.universe || [])) {
+        if (!existing.has(t)) {
+          const o = document.createElement('option'); o.value = t; o.textContent = t;
+          sel.appendChild(o);
+        }
+      }
+
+      $('updated-at').textContent = 'updated ' + fmt.time(new Date().toISOString());
+    }
+
+    async function refreshAccount() {
+      const a = await get('/api/account');
+      if (!a) return;
+      $('equity').textContent = fmt.money(a.equity);
+      $('cash').textContent = fmt.money(a.cash);
+      $('bp').textContent = fmt.money(a.buyingPower);
+      $('open-eq').textContent = fmt.money(a.sessionOpenEquity);
+
+      const dp = $('day-pnl');
+      const v = a.dayPnL || 0;
+      const pct = a.dayPnLPct || 0;
+      const cls = v > 0 ? 'num-pos' : (v < 0 ? 'num-neg' : '');
+      const sign = v > 0 ? '+' : '';
+      dp.innerHTML = `day P&amp;L: <span class="${cls}">${sign}${fmt.money(v)} (${sign}${fmt.pct(pct)})</span>`;
+    }
+
+    async function refreshPositions() {
+      const p = await get('/api/positions') || [];
+      const tbody = $('positions-tbl').querySelector('tbody');
+      if (p.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No open positions</td></tr>';
+        return;
+      }
+      tbody.innerHTML = p.map(row => {
+        const pnl = Number(row.unrealizedPnL);
+        const cls = pnl > 0 ? 'num-pos' : (pnl < 0 ? 'num-neg' : '');
+        const sign = pnl > 0 ? '+' : '';
+        return `<tr>
+          <td><strong>${escapeHtml(row.ticker)}</strong></td>
+          <td class="num">${row.quantity}</td>
+          <td class="num">${fmt.money(row.averageEntryPrice)}</td>
+          <td class="num">${fmt.money(row.marketValue)}</td>
+          <td class="num ${cls}">${sign}${fmt.money(pnl)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function refreshExits() {
+      const e = await get('/api/exits');
+      if (!e) return;
+
+      const trailPct = e.positions && e.positions[0] ? (e.positions[0].trailingStopPercent * 100).toFixed(1) : '1.5';
+      const armPct = e.positions && e.positions[0] ? (e.positions[0].trailingStopActivationPercent * 100).toFixed(1) : '3';
+      const summary = e.enabled
+        ? `Stop ${(e.stopLossPercent*100).toFixed(0)}% · Trail ${trailPct}% (arms above +${armPct}%) · Max hold ${e.maxHoldDays}d`
+        : 'Exits disabled (Exits:Enabled = false)';
+      $('exits-summary').textContent = summary;
+
+      const positions = e.positions || [];
+      const tbody = $('exits-tbl').querySelector('tbody');
+      if (positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No positions</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = positions.map(p => {
+        const pnl = p.pnlPercent;
+        const cls = pnl > 0 ? 'num-pos' : (pnl < 0 ? 'num-neg' : '');
+        const sign = pnl > 0 ? '+' : '';
+        const dStop = p.stopLossAt != null ? (pnl - p.stopLossAt) * 100 : null;
+        const peakLabel = p.peakPctFromEntry != null
+            ? (p.peakPctFromEntry > 0 ? '+' : '') + (p.peakPctFromEntry * 100).toFixed(1) + '%'
+            : '—';
+        let trailCol;
+        if (!p.trailArmed) {
+          trailCol = `<span style="color:var(--muted)" title="trail arms once above +${(p.trailingStopActivationPercent*100).toFixed(1)}%">—</span>`;
+        } else {
+          const dropPct = (p.dropFromPeak || 0) * 100;     // negative when off-peak
+          const trigger = -(p.trailingStopPercent || 0) * 100;  // e.g. -1.5
+          const room = dropPct - trigger;                  // pp until trigger (positive = safe)
+          const armedCls = room < 0.5 ? 'num-neg' : '';
+          trailCol = `<span class="${armedCls}" title="${dropPct.toFixed(2)}pp from peak; trails at ${trigger.toFixed(1)}pp">${room.toFixed(1)}pp</span>`;
+        }
+        const held = p.daysHeld < 1
+            ? Math.round(p.daysHeld * 24) + 'h'
+            : p.daysHeld.toFixed(1) + 'd';
+        const heldOf = p.maxHoldDays ? `${held} / ${p.maxHoldDays}d` : held;
+        return `<tr>
+          <td><strong>${escapeHtml(p.ticker)}</strong></td>
+          <td class="num ${cls}">${sign}${(pnl*100).toFixed(2)}%</td>
+          <td class="num" title="highest % above entry since open">${peakLabel}</td>
+          <td class="num">${trailCol}</td>
+          <td class="num" title="pp until stop-loss fires">${dStop != null ? dStop.toFixed(1)+'pp' : '—'}</td>
+          <td class="num">${heldOf}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function refreshOrders() {
+      const o = await get('/api/orders?limit=50') || [];
+      const tbody = $('orders-tbl').querySelector('tbody');
+      const summary = $('orders-summary');
+
+      if (o.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">No orders yet</td></tr>';
+        summary.innerHTML = '';
+        return;
+      }
+
+      // Count buckets
+      const counts = { filled: 0, pending: 0, rejected: 0, canceled: 0 };
+      for (const x of o) {
+        const s = (x.status || '').toLowerCase();
+        if (s === 'filled' || s === 'partially_filled') counts.filled++;
+        else if (s === 'rejected' || s === 'suspended') counts.rejected++;
+        else if (s === 'canceled' || s === 'cancelled' || s === 'expired' || s === 'replaced') counts.canceled++;
+        else counts.pending++;   // new/accepted/pending_new/held
+      }
+      summary.innerHTML =
+        (counts.filled  ? `<span class="badge status-filled">${counts.filled} filled</span>` : '') +
+        (counts.pending ? `<span class="badge status-new">${counts.pending} pending</span>` : '') +
+        (counts.canceled? `<span class="badge status-canceled">${counts.canceled} canceled</span>` : '') +
+        (counts.rejected? `<span class="badge status-rejected">${counts.rejected} rejected</span>` : '');
+
+      tbody.innerHTML = o.slice(0, 25).map(x => {
+        const sideCls = x.side === 'Buy' ? 'num-pos' : 'num-neg';
+        const status = (x.status || '').toLowerCase();
+        const statusBadge = `<span class="badge status-${status}">${status}</span>`;
+        const qtyText = x.filledQuantity && x.filledQuantity !== x.requestedQuantity
+          ? `${x.filledQuantity}/${x.requestedQuantity}`
+          : `${x.requestedQuantity}`;
+        return `<tr>
+          <td>${fmt.time(x.submittedAt)}</td>
+          <td><strong class="${sideCls}">${escapeHtml(x.side)}</strong></td>
+          <td><strong>${escapeHtml(x.ticker)}</strong></td>
+          <td class="num">${qtyText}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function refreshDecisions() {
+      const d = await get('/api/decisions?limit=200') || [];
+      allDecisions = d;
+      renderDecisions();
+    }
+
+    function renderDecisions() {
+      const feed = $('feed');
+      let list = allDecisions;
+      if (filters.ticker) list = list.filter(x => x.ticker === filters.ticker);
+      if (filters.outcome) list = list.filter(x => x.outcome === filters.outcome);
+      if (filters.source) {
+        if (filters.source === 'Finnhub') list = list.filter(x => x.source !== 'SEC EDGAR');
+        else list = list.filter(x => x.source === filters.source);
+      }
+      $('decisions-count').textContent = `${list.length} of ${allDecisions.length}`;
+
+      if (list.length === 0) {
+        feed.innerHTML = '<div class="empty">No decisions match the current filter.</div>';
+        return;
+      }
+
+      feed.innerHTML = list.map(x => {
+        const sb = sentimentBadge(x.sentiment);
+        const ab = x.actionable ? badge('actionable', 'actionable') : '';
+        const ob = badge(x.outcome, 'outcome-' + x.outcome);
+        const conf = x.confidence != null ? fmt.pct0(x.confidence) + ' conf' : '';
+        const sideQty = (x.side && x.quantity != null) ? ` ${x.side} ${x.quantity}` : '';
+        const linkOpen = x.url ? `<a href="${escapeHtml(x.url)}" target="_blank" rel="noopener">` : '';
+        const linkClose = x.url ? `</a>` : '';
+        return `
+          <div class="feed-item">
+            <div class="feed-head">
+              <span class="feed-time">${fmt.time(x.at)}</span>
+              <span class="feed-ticker">${escapeHtml(x.ticker)}</span>
+              <span class="feed-source">[${escapeHtml(x.source)}]</span>
+              ${sb} ${ab} ${ob}
+              <span class="feed-time">${conf}${sideQty}</span>
+            </div>
+            <div class="feed-headline">${linkOpen}${escapeHtml(x.headline)}${linkClose}</div>
+            ${x.reasoning ? `<div class="feed-reasoning">${escapeHtml(x.reasoning)}</div>` : ''}
+            ${x.outcomeReason && x.outcome !== 'NoTradeGate' ? `<div class="feed-reasoning">→ ${escapeHtml(x.outcomeReason)}</div>` : ''}
+            ${x.macroSummary ? `<div style="margin-top:4px;font-size:11px;color:var(--muted)">📊 macro: ${escapeHtml(x.macroSummary)}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    // --- bootstrapping ---
+    $('f-ticker').addEventListener('change', e => { filters.ticker = e.target.value; renderDecisions(); });
+    $('f-outcome').addEventListener('change', e => { filters.outcome = e.target.value; renderDecisions(); });
+    $('f-source').addEventListener('change', e => { filters.source = e.target.value; renderDecisions(); });
+
+    async function refreshTrending() {
+      const t = await get('/api/trending');
+      if (!t) return;
+      const summary = t.enabled
+        ? (t.lastUpdatedUtc
+            ? `${t.tickers.length} tickers · ${t.model} · updated ${fmt.ago(t.lastUpdatedUtc)} ago`
+            : `${t.model} · waiting for first poll…`)
+        : 'Disabled (Grok:Enabled = false). Set Grok:ApiKey via user-secrets to enable.';
+      $('trending-summary').textContent = summary;
+
+      const tickers = t.tickers || [];
+      if (tickers.length === 0) {
+        $('trending-entries').innerHTML = t.enabled
+          ? '<div class="empty" style="padding:8px 0">No trending tickers yet.</div>'
+          : '';
+        return;
+      }
+      const sentBadgeClass = s => s === 'bullish' ? 'bull' : s === 'bearish' ? 'bear' : 'neutral';
+      $('trending-entries').innerHTML = tickers.map(x => `
+        <div style="border-bottom:1px solid var(--border);padding-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge actionable">${escapeHtml(x.ticker)}</span>
+            <span class="badge ${sentBadgeClass(x.sentiment)}">${escapeHtml(x.sentiment || 'mixed')}</span>
+          </div>
+          <div style="color:var(--muted);font-size:12px;margin-top:3px">${escapeHtml(x.reason || '')}</div>
+        </div>`).join('');
+    }
+
+    async function refreshWatchlist() {
+      const w = await get('/api/watchlist');
+      if (!w) return;
+
+      const summary = w.enabled
+        ? `${w.entries.length} / ${w.maxWatchlistSize} tickers · need ≥${w.buzzThreshold} mentions in ${w.buzzWindowMinutes}m · TTL ${w.watchlistTtlHours}h`
+        : 'Discovery disabled (Discovery:Enabled = false)';
+      $('wl-summary').textContent = summary;
+
+      const entries = w.entries || [];
+      if (entries.length === 0) {
+        $('wl-entries').innerHTML = '<div class="empty" style="padding:8px 0">No dynamic tickers yet — waiting for buzz to build.</div>';
+      } else {
+        $('wl-entries').innerHTML = entries.map(e => {
+          const remainMs = new Date(e.expiresAt).getTime() - Date.now();
+          const remain = remainMs > 0 ? Math.round(remainMs / 60000) + 'm left' : 'expiring';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span class="badge actionable">${escapeHtml(e.ticker)}</span>
+            <span style="color:var(--muted);font-size:12px;flex:1">buzz ${e.buzzAtPromotion}</span>
+            <span style="color:var(--muted);font-size:11px">${remain}</span>
+          </div>`;
+        }).join('');
+      }
+
+      const buzz = w.topBuzz || [];
+      if (buzz.length === 0) {
+        $('wl-buzz').innerHTML = '<em style="color:var(--muted);font-size:12px">no mentions yet</em>';
+      } else {
+        $('wl-buzz').innerHTML = buzz.map(b =>
+          `<span class="badge neutral" title="${b.score} mentions">${escapeHtml(b.ticker)} <span style="opacity:0.7;margin-left:2px">${b.score}</span></span>`
+        ).join('');
+      }
+    }
+
+    async function tick() {
+      await Promise.all([refreshStatus(), refreshAccount(), refreshPositions(), refreshExits(), refreshOrders(), refreshDecisions(), refreshWatchlist(), refreshTrending()]);
+    }
+    tick();
+    setInterval(tick, 3000);
+  </script>
+</body>
+</html>

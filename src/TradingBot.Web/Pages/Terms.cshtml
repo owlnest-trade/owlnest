@@ -1,0 +1,105 @@
+@page
+@model TradingBot.Web.Pages.TermsModel
+@{
+    ViewData["Title"] = "Risk Disclosure & Terms of Use";
+}
+
+<h1>Risk Disclosure & Terms of Use</h1>
+<p class="dim">Version @TradingBot.Web.Pages.TermsModel.CurrentVersion. This page is a plain-language risk notice for owlnest users, self-hosters, contributors, and managed-instance customers.</p>
+
+<div class="card" style="border-color: rgba(248,81,73,0.4)">
+    <h2 style="color: var(--bear); margin-top: 0">Trading can lose money</h2>
+    <p><strong>Owlnest is automated trading software.</strong> It reads market news, asks AI models to classify headlines, applies configurable gates, and can submit orders through a connected Alpaca account.</p>
+    <p><strong>You can lose money if you use live trading.</strong> You can lose some or all of the money in your brokerage account. Paper trading results, replay results, backtests, shadow portfolios, or example screenshots do not predict future live results.</p>
+    <p>Owlnest is provided for experimentation, education, self-hosting, and community development. It is not a promise of profit and it is not a managed investment product.</p>
+</div>
+
+<div class="card">
+    <h2>No financial advice</h2>
+    <ul>
+        <li>Owlnest, its operators, maintainers, contributors, and affiliates are not your broker, investment adviser, financial planner, tax adviser, legal adviser, or fiduciary.</li>
+        <li>Nothing in the app, repository, documentation, reports, issues, examples, or support messages is financial, investment, legal, tax, or trading advice.</li>
+        <li>You are solely responsible for deciding whether to run the software, what settings to use, what symbols to trade, what account to connect, whether to enable live mode, and when to stop.</li>
+        <li>You should consult qualified professionals before making financial, legal, tax, or investment decisions.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>AI and automation risk</h2>
+    <ul>
+        <li>AI models can misread headlines, hallucinate facts, miss important context, misunderstand timing, or classify stale news as actionable.</li>
+        <li>News feeds can be delayed, incomplete, duplicated, mistranslated, wrong, or already priced in by the market.</li>
+        <li>Verification gates such as Claude or Grok can approve bad trades, block good trades, fail, time out, or return malformed responses.</li>
+        <li>Backtests and replays are limited by stored data quality. They may omit slippage, rejected orders, latency, liquidity, fees, spread, market impact, missing price snapshots, and real brokerage behavior.</li>
+        <li>Automated exits can fail or execute at worse prices than expected, especially during gaps, volatile markets, halts, outages, or illiquid periods.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Market, broker, and crypto risk</h2>
+    <ul>
+        <li>Markets can move sharply against you. Stops can slip. Orders can fill partially or not at all. Market orders can fill far from the displayed price.</li>
+        <li>Equities, ETFs, and crypto assets can suffer sudden drawdowns, trading halts, liquidity gaps, regulatory actions, exchange outages, or broker restrictions.</li>
+        <li>Crypto trades 24/7 and can be significantly more volatile than equities. Crypto price feeds, spreads, and fills can differ materially from expectations.</li>
+        <li>Alpaca and other providers are third parties. Their terms, outages, API changes, limits, account restrictions, and execution behavior are outside owlnest's control.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Software and infrastructure risk</h2>
+    <ul>
+        <li>The software may contain bugs, security issues, data-model mistakes, race conditions, incorrect assumptions, or incomplete edge-case handling.</li>
+        <li>Cloud hosting, databases, API providers, AI providers, DNS, certificates, and network connections can fail or degrade.</li>
+        <li>Configuration mistakes can cause unexpected behavior. Examples include live keys instead of paper keys, overly aggressive thresholds, broad ticker universes, missing stop settings, or disabled gates.</li>
+        <li>Self-hosters are responsible for deployment, secrets, database backups, logs, monitoring, upgrades, data retention, access control, and compliance obligations.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Your responsibility</h2>
+    <ol>
+        <li>You must understand the code and settings before running it.</li>
+        <li>You must start in paper mode and review decisions, orders, positions, and replay reports before considering live mode.</li>
+        <li>You must use funds you can afford to lose if you enable live trading.</li>
+        <li>You must monitor the bot. Do not assume automation can be left unattended.</li>
+        <li>You must stop the bot if it behaves unexpectedly.</li>
+        <li>You must protect and rotate API keys, connection strings, OAuth secrets, and database credentials.</li>
+        <li>You must comply with all laws, rules, broker terms, API-provider terms, tax obligations, and market regulations that apply to you.</li>
+    </ol>
+</div>
+
+<div class="card">
+    <h2>No warranty; limitation of liability</h2>
+    <p><strong>Owlnest is provided "as is" and "as available."</strong> To the maximum extent permitted by law, there are no warranties of any kind, express or implied, including merchantability, fitness for a particular purpose, availability, security, accuracy, non-infringement, profitability, or error-free operation.</p>
+    <p>To the maximum extent permitted by law, owlnest's operators, maintainers, contributors, affiliates, and service providers are not liable for trading losses, lost profits, missed opportunities, data loss, account issues, broker actions, API failures, model errors, security incidents, infrastructure outages, or any direct, indirect, incidental, consequential, special, exemplary, or punitive damages arising from use or inability to use the software.</p>
+    <p>If a jurisdiction does not allow some exclusions or limitations, those exclusions apply only to the maximum extent permitted by that jurisdiction.</p>
+</div>
+
+<div class="card">
+    <h2>Open-source and managed-instance terms</h2>
+    <ul>
+        <li>Open-source users run the software at their own risk and are responsible for their own infrastructure and trading decisions.</li>
+        <li>Contributions, issues, pull requests, examples, and discussions are not trading advice and do not create a duty to support, maintain, monitor, or update your deployment.</li>
+        <li>Managed-instance users remain responsible for their settings, connected accounts, trading decisions, and live-mode choices. Managed hosting is not portfolio management or investment advice.</li>
+        <li>Public signup is closed. Managed access, maintainer access, or other private access is handled manually through the contact page.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Data and privacy</h2>
+    <ul>
+        <li>The app may store email addresses, hashed passwords, encrypted Alpaca keys, settings, decisions, orders, positions, equity snapshots, gate-call logs, prompts, model responses, diagnostics, and contact messages.</li>
+        <li>Self-hosters control their own database and are responsible for securing, backing up, exporting, deleting, and retaining their own data.</li>
+        <li>Third-party providers may receive request data needed to provide news, AI analysis, brokerage, OAuth, email, analytics, or hosting services. Their own terms and privacy policies apply.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>Governing law</h2>
+    <p>This project is operated from Australia. To the extent legally permitted, disputes involving a managed instance or operator-hosted service are subject to the non-exclusive jurisdiction of the courts of New South Wales, Australia. Open-source use may also be governed by the repository license once one is selected.</p>
+</div>
+
+<div style="text-align:center;margin: 28px 0;">
+    <a asp-page="/Index" class="btn">Back to home</a>
+    <a asp-page="/Contact" class="ghost" style="margin-left:10px;background:transparent;border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:6px;font-weight:600;text-decoration:none">Contact</a>
+</div>

@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+out/
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+.claude/
+.agents/
+.tmp/
+screenshots/
+.public-export-*/
+.public-export-owlnest/
+*.user
+*.suo
+
+# User-specific config (in addition to user-secrets which lives outside the repo)
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+
+# Local state files written by the bot at runtime
+# (Only the top-level project state folder — do NOT match Services/State/ which holds source code.)
+/src/*/state/
+**/state/*.json
+logs/
+*.log
+*.db
+*.db-shm
+*.db-wal
+
+# Local/cloud publish metadata
+**/Properties/PublishProfiles/
+**/Properties/ServiceDependencies/
+
+# OS junk
+.DS_Store
+Thumbs.db
+.fuse_hidden*
+
+# NuGet
+*.nupkg
+.packages/
