@@ -1,0 +1,58 @@
+name: Deploy Owlnest Web App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_PATH: src/TradingBot.Web/TradingBot.Web.csproj
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-build --output ${{ runner.temp }}/owlnest
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: owlnest-web
+          path: ${{ runner.temp }}/owlnest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: owlnest-web
+          path: owlnest-web
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: owltrading
+          slot-name: Production
+          package: owlnest-web
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_74F545673D0C470EACEEF23DCA11722F }}
