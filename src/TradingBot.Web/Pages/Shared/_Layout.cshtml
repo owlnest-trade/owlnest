@@ -1,6 +1,7 @@
-@using Microsoft.AspNetCore.Identity
-@using TradingBot.Web.Data
-@inject SignInManager<AppUser> SignInManager
+@{
+    var isSignedIn = User?.Identity?.IsAuthenticated == true;
+    var userName = User?.Identity?.Name ?? "";
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,19 +27,7 @@
         record_sessions_percent: 100,
       })
 
-      @if (SignInManager.IsSignedIn(User))
-      {
-          var email = User.Identity?.Name ?? "";
-          var emailJs = System.Text.Json.JsonSerializer.Serialize(email);
-          <text>
-              mixpanel.identify(@Html.Raw(emailJs));
-              mixpanel.people.set({
-                  $email: @Html.Raw(emailJs),
-                  is_demo: false,
-              });
-              mixpanel.register({ is_demo: false });
-          </text>
-      }
+      mixpanel.register({ is_demo: false });
     </script>
 </head>
 <body>
@@ -50,7 +39,7 @@
     </button>
 
     <nav id="main-nav">
-        @if (SignInManager.IsSignedIn(User))
+        @if (isSignedIn)
         {
             <a asp-page="/Dashboard">Dashboard</a>
             <a asp-page="/Reports">Reports</a>
@@ -59,7 +48,7 @@
             <a asp-page="/Diagnostics">Diagnostics</a>
             <a asp-page="/Contact">Contact</a>
             <span class="nav-sep"></span>
-            <span class="user" title="@User.Identity?.Name">@User.Identity?.Name</span>
+            <span class="user" title="@userName">@userName</span>
             <form asp-page="/Account/Logout" method="post" class="logout-form">
                 <button type="submit" class="link">Log out</button>
             </form>
