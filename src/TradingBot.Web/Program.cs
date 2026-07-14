@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TradingBot.Web.Data;
@@ -8,6 +9,10 @@ using TradingBot.Web.Services.Diagnostics;
 using TradingBot.Web.Services.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 
 // Load user-secrets regardless of environment. By default they only load in Development, but
 // owlnest defaults to Production — and in real Production (Azure App Service) we'll use
@@ -66,8 +71,13 @@ builder.Services.ConfigureApplicationCookie(o =>
     }
 }
 
-// Data protection — used by ApiKeyProtector. Persists keys to the local profile by default.
-builder.Services.AddDataProtection();
+// Data protection is used by Identity cookies, antiforgery, and ApiKeyProtector.
+// Persist keys beside the SQLite database so Azure/Linux and locked-down local hosts do not
+// fall back to an unreadable profile folder.
+var dataProtectionKeysPath = BuildDataProtectionKeysPath(builder);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("owlnest.trade");
 
 builder.Services
     .AddRazorPages(opts =>
@@ -449,6 +459,18 @@ static string DefaultSqlitePath(WebApplicationBuilder builder)
     }
 
     return Path.Combine(builder.Environment.ContentRootPath, "App_Data", "owlnest.db");
+}
+
+static string BuildDataProtectionKeysPath(WebApplicationBuilder builder)
+{
+    var home = Environment.GetEnvironmentVariable("HOME");
+    var siteName = Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME");
+    var keysPath = !string.IsNullOrWhiteSpace(home) && !string.IsNullOrWhiteSpace(siteName)
+        ? Path.Combine(home, "data", "owlnest", "data-protection-keys")
+        : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "data-protection-keys");
+
+    Directory.CreateDirectory(keysPath);
+    return keysPath;
 }
 
 static bool LooksLikeSqliteConnectionString(string? connectionString)

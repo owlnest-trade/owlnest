@@ -30,6 +30,7 @@ logs/
 *.db
 *.db-shm
 *.db-wal
+src/TradingBot.Web/App_Data/data-protection-keys/
 
 # Local/cloud publish metadata
 **/Properties/PublishProfiles/
